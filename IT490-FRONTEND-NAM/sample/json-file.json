@@ -1,0 +1,6 @@
+{
+	type: "Login",
+	username: "wendys",
+	password: "1234",
+	message: "test message"
+}
