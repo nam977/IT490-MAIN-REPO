@@ -34,20 +34,16 @@ class rabbitMQServer
 		}
 		$this->exchange = $this->machine[$server]["EXCHANGE"];
 		$this->queue = $this->machine[$server]["QUEUE"];
-		// allow explicit routing key from INI (e.g. ROUTING_KEY = login)
-		// allow explicit routing key from INI (e.g. ROUTING_KEY = login)
-		if (isset($this->machine[$server]["ROUTING_KEY"])) {
-			$this->routing_key = $this->machine[$server]["ROUTING_KEY"];
-		}
 	}
 
 	function process_message($msg)
 	{
 		// send the ack to clear the item from the queue
-		// ack the delivery first to ensure it is removed from the queue
-		if (isset($this->conn_queue)) {
-			$this->conn_queue->ack($msg->getDeliveryTag());
-		}
+		if ($msg->getRoutingKey() !== "*")
+    {
+      return;
+    }
+    $this->conn_queue->ack($msg->getDeliveryTag());
 		try
 		{
 			if ($msg->getReplyTo())
@@ -68,9 +64,6 @@ class rabbitMQServer
       $params['login'] = $this->USER;
       $params['password'] = $this->PASSWORD;
       $params['vhost'] = $this->VHOST;
-      $params['connect_timeout'] = 10;
-      $params['read_timeout'] = 10;
-      $params['write_timeout'] = 10;
 			$conn = new AMQPConnection($params);
 			$conn->connect();
 			$channel = new AMQPChannel($conn);
@@ -89,8 +82,8 @@ class rabbitMQServer
 		}
 		catch(Exception $e)
 		{
-			// ampq throws exception if get fails... log instead of echoing to avoid breaking HTTP headers
-			error_log("rabbitMQServer: process_message: exception caught: " . $e->getMessage());
+			// ampq throws exception if get fails...
+            echo "error: rabbitMQServer: process_message: exception caught: ".$e;
 		}
 		// message does not require a response, send ack immediately
 		$body = $msg->getBody();
@@ -99,7 +92,7 @@ class rabbitMQServer
 		{
 			call_user_func($this->callback,$payload);
 		}
-		error_log("rabbitMQServer: processed one-way message");
+		echo "processed one-way message\n";
 	}
 
 	function process_requests($callback)
@@ -113,9 +106,6 @@ class rabbitMQServer
       $params['login'] = $this->USER;
       $params['password'] = $this->PASSWORD;
       $params['vhost'] = $this->VHOST;
-      $params['connect_timeout'] = 10;
-      $params['read_timeout'] = 10;
-      $params['write_timeout'] = 10;
 			$conn = new AMQPConnection($params);
 			$conn->connect();
 
@@ -176,10 +166,6 @@ class rabbitMQClient
 		}
 		$this->exchange = $this->machine[$server]["EXCHANGE"];
 		$this->queue = $this->machine[$server]["QUEUE"];
-		// allow explicit routing key from INI (e.g. ROUTING_KEY = login)
-		if (isset($this->machine[$server]["ROUTING_KEY"])) {
-			$this->routing_key = $this->machine[$server]["ROUTING_KEY"];
-		}
 	}
 
 	function process_response($response)
@@ -214,9 +200,6 @@ class rabbitMQClient
       $params['login'] = $this->USER;
       $params['password'] = $this->PASSWORD;
       $params['vhost'] = $this->VHOST;
-      $params['connect_timeout'] = 10;
-      $params['read_timeout'] = 10;
-      $params['write_timeout'] = 10;
 
 			$conn = new AMQPConnection($params);
 			$conn->connect();
@@ -246,7 +229,7 @@ class rabbitMQClient
 		}
 		catch(Exception $e)
 		{
-			throw new Exception("failed to send message to exchange: ". $e->getMessage());
+			die("failed to send message to exchange: ". $e->getMessage()."\n");
 		}
 	}
 
@@ -268,9 +251,6 @@ class rabbitMQClient
       $params['login'] = $this->USER;
       $params['password'] = $this->PASSWORD;
       $params['vhost'] = $this->VHOST;
-      $params['connect_timeout'] = 10;
-      $params['read_timeout'] = 10;
-      $params['write_timeout'] = 10;
 			$conn = new AMQPConnection($params);
 			$conn->connect();
 			$channel = new AMQPChannel($conn);
@@ -284,9 +264,9 @@ class rabbitMQClient
 		}
 		catch(Exception $e)
 		{
-			throw new Exception("failed to send message to exchange: ". $e->getMessage());
+			die("failed to send message to exchange: ". $e->getMessage()."\n");
 		}
 	}
 }
-
+?>
 

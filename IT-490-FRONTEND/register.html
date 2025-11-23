@@ -15,7 +15,7 @@
 				<br>
 				<input type="password" name="password" id="password" placeholder="password" required>
 				<br>
-				<input type="email" name="email" placeholder="email" id="email" required>
+				<input type="email" for="email" name="email" placeholder="email" id="email" required>
 				<br>
 				<input type="hidden" name="type" value="register">
 				<input type="submit" value="register">
@@ -55,10 +55,8 @@
 			
 			function SendRegisterRequestJSON(registerData){
 				var xhr = new XMLHttpRequest();
-				xhr.open("POST","testRabbitMQClient.php"); // send registration to gateway that forwards to backend
+				xhr.open("POST","mqGateway.php");
 				xhr.setRequestHeader("Content-Type","application/json");
-				// Add credentials for CORS as recommended by the article
-				xhr.withCredentials = true;
 				xhr.onreadystatechange = function (){
 					if (this.readyState === 4) HandleRegisterResponse(this);
 				};

@@ -8,7 +8,6 @@
     <body>
         <h1>Forum Threads</h1>
         <div id="threadsContainer"></div>
-            <!-- Threads will be dynamically loaded here -->
              <h3> Create a New Thread</h3>
              <input type="text" id="title" placeholder="Thread Title" required/>
              <textarea id="body" placeholder="What do you want to discuss?" rows="5" required></textarea>
@@ -40,7 +39,51 @@
                     'created_at': '2024-03-10T14:45:00Z',
                     'posts_count': 8
                 }
-            ]};
+            ]
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const createButton = document.getElementById('createThreadButton');
+            
+            createButton.addEventListener('click', async function() {
+                const title = document.getElementById('title').value.trim();
+                const body = document.getElementById('body').value.trim();
+                
+                if (!title || !body) {
+                    alert('Please provide both title and body');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('mqGateway.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            type: 'create_thread',
+                            title: title,
+                            body: body
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' || data.returnCode === 0) {
+                        alert('Thread created successfully!');
+                        document.getElementById('title').value = '';
+                        document.getElementById('body').value = '';
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to create thread');
+                }
+            });
+        });
 </script>
 </body> 
 </html>

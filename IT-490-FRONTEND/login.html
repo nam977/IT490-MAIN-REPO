@@ -14,11 +14,11 @@
             awaiting response
             <form id="loginForm">
                 <label for="username">Enter username:</label><br>
-                <input type="text" name="username" id="username" placeholder="username" required>
+                <input type="text" for="username" name="username" id="username" placeholder="username" required>
                 <br>
                 
                 <label for="password">Enter Password:</label><br>
-                <input type="password" name="password" id="password" required>
+                <input type="password" for="password" name="password" id="password" required>
                 <br>
                 <input type="hidden" name="type" value="login">
                 <input type="submit" value="login"> 
@@ -26,8 +26,6 @@
         </div>
     </section>
     <script>
-        
-    // Add your JavaScript code here
     document.addEventListener("DOMContentLoaded", function() {
         const output = document.getElementById("textResponse");
 
@@ -79,21 +77,16 @@
         function SendLoginRequest(loginData)
         {
             const xhr = new XMLHttpRequest();
-            xhr.open("POST","testRabbitMQClient.php");
+            xhr.open("POST","mqGateway.php");
             xhr.setRequestHeader("Content-Type","application/json");
-            // Add credentials for CORS as recommended by the article
-            xhr.withCredentials = true;
             xhr.onreadystatechange = function () {
-                if (this.readyState == 4) { 
-                    console.log("Server Response:", this.responseText); 
-                    HandleLoginResponse(this); 
-                }		
+                if (this.readyState == 4) { console.log("Server Response:", this.responseText); HandleLoginResponse(this); }		
             };
             xhr.send(JSON.stringify(loginData));
         }
         
         document.getElementById("loginForm").addEventListener("submit", (e) => {
-            e.preventDefault(); // Prevent the default form submission
+            e.preventDefault();
             const username = document.getElementById("username").value.trim();
             const password = document.getElementById("password").value;
             SendLoginRequest({ type: "login", username, password});
