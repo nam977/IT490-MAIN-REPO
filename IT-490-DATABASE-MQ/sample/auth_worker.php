@@ -6,8 +6,8 @@ require_once('rabbitMQLib.inc');
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Message\AMQPMessage;
+//use PhpAmqpLib\Connection\AMQPStreamConnection;
+//use PhpAmqpLib\Message\AMQPMessage;
 
 // Detect caller (IP or hostname)
 $client_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -165,11 +165,22 @@ function requestProcessor($request)
     }
 }
 
+$authServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer");
+echo "Authentictation Server ready and on standby..." . PHP_EOL;
+$authServerPid = pcntl_fork();
+if ($authServerPid == 0){
+    $authServer->process_requests('requestProcessor');
+    exit();
+}
+
+$stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer");
+echo "Stock Notfication Server ready and on standby..." . PHP_EOL;
+$stockServerPid = pcntl_fork();
+if ($stockServerPid == 0){
+    $stockServer->process_requests('requestProcessor');
+    exit();
+}
 /*
-|--------------------------------------------------------------------------
-| RabbitMQ Worker Setup
-|--------------------------------------------------------------------------
-*/
 $host = '100.114.135.58';
 $port = 5672;
 $user = 'test';
@@ -194,11 +205,8 @@ try {
 $channel->queue_declare($queue, false, true, false, false);
 echo "Connected to RabbitMQ Broker on vhost '{$vhost}'..." . PHP_EOL;
 
-/*
-|--------------------------------------------------------------------------
-| Consumer + RPC Reply Logic
-|--------------------------------------------------------------------------
-*/
+
+
 $callback = function(AMQPMessage $msg) use ($channel) {
 
     echo "received message: " . $msg->body . PHP_EOL;
@@ -243,4 +251,4 @@ while ($channel->is_consuming()) {
 register_shutdown_function(function() use ($channel, $connection) {
     $channel->close();
     $connection->close();
-});
+});*/
