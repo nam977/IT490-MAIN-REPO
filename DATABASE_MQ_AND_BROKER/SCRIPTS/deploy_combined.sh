@@ -7,9 +7,6 @@
 set -e  # Exit on error
 
 # Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 
 echo -e "[+]========================================[+]\n"
 echo -e "[+] Combined DMZ + Database Setup Script   [+]\n"
@@ -17,7 +14,7 @@ echo -e "[+]========================================[+]\n"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}This script must be run as root (use sudo)${NC}" 
+   echo -e " [+] This script must be run as root (use sudo) [+]\n" 
    exit 1
 fi
 
@@ -87,7 +84,7 @@ EOF
 # Import database schema if exists
 if [ -f "$BACKEND_FOLDER/testdb.sql" ]; then
     echo "Importing da`tabase schema..."
-    mysql -u $DB_USER -p"$DB_PASS" $DB_NAME < "$BACKEND_SRC/testdb.sql" 2>/dev/null || echo "Schema import skipped (may already exist)"
+    mysql -u $DB_USER -p"$DB_PASS" $DB_NAME < "$BACKEND_FOLDER/testdb.sql" 2>/dev/null || echo "Schema import skipped (may already exist)"
 fi
 
 print_success "MySQL configured"
