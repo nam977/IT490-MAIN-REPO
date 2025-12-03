@@ -173,7 +173,7 @@ if ($authServerPid == 0){
     exit();
 }
 
-$stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer");
+$stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer2");
 echo "Stock Notfication Server ready and on standby..." . PHP_EOL;
 $stockServerPid = pcntl_fork();
 if ($stockServerPid == 0){
