@@ -85,7 +85,7 @@ check_running_service "rabbitmq-server" "RabbitMQ Server"
 check_running_service "mysql" "MySQL Server"
 check_running_service "apache2" "Apache Web Server"
 check_running_service "auth-worker" "Auth Worker"
-check_runningcheck_running_service_service "stock-app" "Stock Trading App"
+check_running_service "stock-app" "Stock Trading App"
 echo ""
 
 # 2. Check Network Ports
