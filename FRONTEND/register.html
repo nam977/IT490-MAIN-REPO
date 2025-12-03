@@ -4,24 +4,58 @@
 	<head>
 		<meta charset="utf-8">
 		<title>IT-490-001 Registration Page</title>
+		<link rel = "stylesheet" href = "https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
 	</head>
 
-	<body>
-		<section class="register-section">
-			<h1>Register Below</h1>
+	<body class = "has-background-light">
+		<section class="section">
+			<div class = "container">
+				<div class = "columnns is-centered">
+					<div class = "column is-half">
+						<h1 class = "titlee is-3 has-text-centered">Register Below</h1>
+							<div class = "box"></div>
+								<form id="registerForm">
+									<div class = "field">
+										<div class = "control has-icons-left">
+											<input class = "input" type="text" name="username" id="username" placeholder="username" required>
+											<span class = "icon is-small is-left">
+												<i class = "fas fa-user"></i>
+											</span>
+										</div>
+									</div>
 
-			<form id="registerForm">
-				<input type="text" name="username" id="username" placeholder="username" required>
-				<br>
-				<input type="password" name="password" id="password" placeholder="password" required>
-				<br>
-				<input type="email" for="email" name="email" placeholder="email" id="email" required>
-				<br>
-				<input type="hidden" name="type" value="register">
-				<input type="submit" value="register">
-			</form>
-			<p id="textResponse">awaiting response</p>
+									<div class = "field">
+										<div class = "control has-icons-left">
+											<input type="password" name="password" id="password" placeholder="password" required>
+											<span class = "icon is-small is-left">
+												<i class = "fas fa-lock"></i>
+											</span>
+										</div>
+									</div>
+
+									<div class = "field">
+										<div class = "control has-icons-left">
+											<input type="email" for="email" name="email" placeholder="email" id="email" required>
+											<span class = "icon is-small is-left">
+												<i class = "fas fa-envelope"></i>
+											</span>
+										</div>
+									</div>
+									
+									<input type="hidden" name="type" value="register">
+									<div class = "field mt-5">
+										<div class = "control">
+											<input class = "button is-primary is fullwidth" type="submit" value="register">
+										</div>
+									</div>
+								</form>
+								<p id="textResponse" class = "notification is-light mt-4">awaiting response</p>
+							</div>
+					</div>
+				</div>
+			</div>
 		</section>
+	<script defer src = "https://use.fontawesome.com/releases/v5.15.4/js/all.js"></script>
 	<script>
 			// You can add JavaScript here if needed for form validation or other purposes
 		document.addEventListener("DOMContentLoaded", function() {
