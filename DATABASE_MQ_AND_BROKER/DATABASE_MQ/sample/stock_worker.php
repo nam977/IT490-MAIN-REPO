@@ -24,8 +24,17 @@ function requestProcessor($request){
     global $mydb;
 
     if(!isset($request['symbol'])||!sset($request['price'])){
-        return ['status'=>'error','message'=>'invalid requeeset ];
+        return ['status'=>'error','message'=>'invalid request' ];
     }
+    $symbol = $mydb->real_esscape_string($request['symbol']);
+    $price = floatval($request['price']);
+    $timestamp = date('Y-m-d H:i:s');
+
+    $mydb->query("INSERT INTO stock_prices (symbol,price,updated_at) VALUES  ('$symbol',$price,'$timestamp')")l
+    $notification=[];
+
+    $query = "SELECT username,avg_price,shares FROM portfolio_positions WHERE symbol = '$symbol'";
+    $result = $mydb->query($query);
 }
 
 $stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer2");
