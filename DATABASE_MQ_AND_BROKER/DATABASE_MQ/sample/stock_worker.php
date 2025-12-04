@@ -20,9 +20,16 @@ if ($mydb->connect_errno != 0) {
     exit(0);
 }
 
+function requestProcessor($request){
+    global $mydb;
+
+    if(!isset($request['symbol'])||!sset($request['price'])){
+        return ['status'=>'error','message'=>'invalid requeeset ];
+    }
+}
 
 $stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer2");
-echo "Authentictation Server ready and on standby..." . PHP_EOL;
+echo "Stock Server ready and on standby..." . PHP_EOL;
 $stockServerPid = pcntl_fork();
 if ($stockServerPid == 0){
     $stockServer->process_requests('requestProcessor');
