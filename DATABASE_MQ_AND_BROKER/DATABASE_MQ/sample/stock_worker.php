@@ -35,6 +35,30 @@ function requestProcessor($request){
 
     $query = "SELECT username,avg_price,shares FROM portfolio_positions WHERE symbol = '$symbol'";
     $result = $mydb->query($query);
+
+    while ($row = $result->fetch_assoc()){
+        $username = $row['username'];
+        $avg_price = floatval($row['avg_price']);
+        $shares = floatval($row['shares']);
+
+        $high_threshhold = $avg_price*1.10;
+        $low_threshhold = $avg_price *0.90;
+        $alerttype=null;
+        if($price>=$high_threshhold) $alert_type = 'HIGH';
+        elseif ($price<=$high_threshhold) $alert_type = 'LOW';
+
+        if($alerttype){
+            $notification[] = [
+                'username'=>$username,
+                'symbol'=>$symbol,
+                'price'=>$price,
+                'shares'=>$shares,
+                'alert'=>$alerttype,
+                'timestamp'=>$timestamp
+            ];
+        }
+    }
+    return['status'=>'success','notifications'=>$notificaton]
 }
 
 $stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer2");
@@ -44,3 +68,4 @@ if ($stockServerPid == 0){
     $stockServer->process_requests('requestProcessor');
     exit();
 }
+?>
