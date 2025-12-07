@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT490 Logged In Page</title>
+        <link rel = "stylesheet" href = "https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    </head>
+    <body class = "has-background-light">
+        <section class = "section">
+            <div class = "columns is-centered">
+                <div class = "column is-half">
+                    <div class = "box has-text-centered">
+                        <h1 class = "title is-3">Welcome to the IT490 Logged In Page</h1>
+                        <div class = "content mt-5">
+                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58/STEDDIT_FORUM/Upload/">Go to Steddist Forum</a></p>
+                            <p><a class = "button is-link is-fullwidth mb-3" href="/STOCK-VALUE-PAGE/dashboard.html">Go to Stock Value Display page</a></p>
+                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58:5001/mock_trader/dashboard.html">Go to Stock Trader page</a></p>
+                            <button id="logoutButton" class = "button is-danger is-fullwidth">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const sessionId = sessionStorage.getItem("session_id");
+            const authToken = sessionStorage.getItem("auth_token");
+
+            if (!sessionId || !authToken) {
+                window.location.href = "login.html";
+            }
+
+            console.log("sid=", sessionStorage.getItem('session_id'), 
+                        "tok=", sessionStorage.getItem('auth_token'));
+
+            fetch("/mqGateway.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json"},
+                credentials: "same-origin",
+                body: JSON.stringify({
+                    type: "validate_session",
+                    session_id: sessionId,
+                    auth_token: authToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const ok =
+                    data &&
+                    (data.session_valid === true ||
+                        data.valid === true ||
+                        (String(data.status).toLowerCase() === "success" && 
+                        Number(data.returnCode) === 0));
+                if (!ok) {  
+                    sessionStorage.clear();
+                    window.location.href = "login.html";
+                    console.error("Session is invalid:", data);
+                }
+            })
+            .catch((error) => {
+                console.error("Error validating session:", error);
+                sessionStorage.clear();
+                window.location.href = "login.html";
+            });
+        });
+
+        document.getElementById("logoutButton").addEventListener("click", function() {
+            document.cookie = "session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = "index.html";
+        });
+    </script>
+</html>

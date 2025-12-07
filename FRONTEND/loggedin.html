@@ -14,9 +14,9 @@
                     <div class = "box has-text-centered">
                         <h1 class = "title is-3">Welcome to the IT490 Logged In Page</h1>
                         <div class = "content mt-5">
-                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58/STEDDIT_FORUM/Upload/">Go to Steddit Forum</a></p>
-                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58:5002/">Go to Stock Value Display page</a></p>
-                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58:5001/">Go to Stock Trader page</a></p>
+                            <p><a class = "button is-link is-fullwidth mb-3" href="http://100.114.135.58/STEDDIT_FORUM/Upload/">Go to Steddist Forum</a></p>
+                            <p><a class = "button is-link is-fullwidth mb-3" href="/STOCK-VALUE-PAGE/dashboard.html">Go to Stock Value Display page</a></p>
+                            <p><a class = "button is-link is-fullwidth mb-3" href="/STOCK-TRADE-PAGE/index.html">Go to Stock Trader page</a></p>
                             <button id="logoutButton" class = "button is-danger is-fullwidth">Logout</button>
                         </div>
                     </div>
@@ -36,7 +36,7 @@
             console.log("sid=", sessionStorage.getItem('session_id'), 
                         "tok=", sessionStorage.getItem('auth_token'));
 
-            fetch("mqGateway.php", {
+            fetch("/mqGateway.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json"},
                 credentials: "same-origin",
@@ -49,11 +49,11 @@
             .then(response => response.json())
             .then(data => {
                 const ok =
-                data &&
-                (data.session_valid === true ||
-                    data.valid === true ||
-                    (String(data.status).toLowerCase() === "success" && Number(data.returnCode) === 0));
-                
+                    data &&
+                    (data.session_valid === true ||
+                        data.valid === true ||
+                        (String(data.status).toLowerCase() === "success" && 
+                        Number(data.returnCode) === 0));
                 if (!ok) {  
                     sessionStorage.clear();
                     window.location.href = "login.html";
