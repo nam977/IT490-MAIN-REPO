@@ -75,6 +75,7 @@ function doLogin($username, $password)
     }
 }
 
+
 function doValidate($sessionId)
 {
     $db = getDBConnection();
@@ -95,6 +96,132 @@ function doValidate($sessionId)
     return ["returnCode" => 0, "message" => "Session valid", "username" => $username];
 }
 
+function requireValidSession(array $request){
+    $mySessionId = $request['sessionId'] ?? $request['session_id'] ?? $request['sessionID'] ?? '';
+
+    if ($mySessionId === '') {
+        return [
+            "returnCode" => 99, 
+            "status" => "error",
+            "message" => "Session ID missing"
+        ];
+    }
+
+    $result = doValidate($mySessionId);
+
+    if ($result['returnCode'] !== 0) {
+        return [
+            "returnCode" => $result['returnCode'], 
+            "status" => "error",
+            "message" => $result['message'] ?? "Session validation failed"  
+        ];
+    }
+    return [
+        "returnCode" => 0,
+        "status" => "success",
+        "username" => $result['username'] ?? null
+    ];
+}
+
+
+function getMyPortfolio(array $request){
+    $sessionCheck = requireValidSession($request);
+
+    if($sessionCheck['returnCode'] !== 0){
+        return $sessionCheck;
+    }
+
+    $username = $sessionCheck['username'] ?? 'demo';
+
+    $startingCash   = 100000.00;
+    $cashBalance    = 9500.00;
+    $holdingsValue  = 500.00;
+    $totalEquity    = $startingCash;
+
+    $holdings = [
+        [
+            "symbol"        => "AAPL",
+            "shares"        => 10,
+            "avg_price"     => 150.00,
+            "last_price"    => 130.50,
+            'market_value'  => 260.20,
+        ],
+        [
+            "symbol"        => "GOOGL",
+            "shares"        => 5,
+            "avg_price"     => 2500.00,
+            "last_price"    => 2400.00,
+            'market_value'  => 1200.00,
+        ],
+    ];
+
+    $myTrades = [
+        [
+            'timestamp'  => date('Y-m-d H:i:s', strtotime('-2 days')),
+            'action'     => 'stockBuy',
+            'symbol'     => 'AAPL',
+            'shares'     => 10,
+            'price'      => 150.00,
+        ],
+        [
+            'timestamp'  => date('Y-m-d H:i:s', strtotime('-1 days')),
+            'action'     => 'stockBuy',
+            'symbol'     => 'MSFT',
+            'shares'     => 5,
+            'price'      => 2500.00,
+        ],
+    ];
+
+    return [
+        'status'       => 'success',
+        'returnCode'   => 0,
+        'message'      => 'Portfolio retrieved successfully',
+        'username'     => $username,
+        'startingCash' => $startingCash,
+        'cashBalance'  => $cashBalance,
+        'holdingsValue'=> $holdingsValue,
+        'totalEquity'  => $totalEquity,
+        'holdings'     => $holdings,
+        'trades'       => $myTrades,
+    ];
+}
+
+function doPlaceTrade(array $request){
+    $mySessionCheck = requireValidSession($request);
+
+    if ($mySessionCheck['returnCode'] !== 0) {
+        return $mySessionCheck;
+    }
+
+    $username = $mySessionCheck['username'] ?? 'demo';
+
+    $symbol   = strtoupper(trim($request['symbol'] ?? ''));
+    $qty      = (int)($request['quantity'] ?? 0);
+    $action   = $request['stockAction'] ?? $request['action'] ?? '';
+
+    if ($symbol === '' || $qty <= 0 || ($action != 'stockBuy' && $action !== 'stockSell')) {
+        return [
+            "status" => "error",
+            "returnCode" => 1,
+            "message" => "Invalid trade parameters"
+        ];
+    }
+
+    $dummyPrice = 123.45;
+
+    return [
+        'status'    => 'success',
+        'returnCode'=> 0,
+        'message'   => sprintf(
+            '%s %d %s shares at $%.2f (stub, no DB update yet)',
+            ($action === 'stockBuy' ? 'Bought' : 'Sold'),
+            $qty,
+            $symbol,
+            $dummyPrice
+        )
+    ];
+}
+
 function requestProcessor($request)
 {
     echo "DB Server received:" . PHP_EOL;
@@ -107,8 +234,16 @@ function requestProcessor($request)
             return doLogin($request['username'], $request['password']);
         case "validate_session":
             return doValidate($request['sessionId']);
+        case "get_portfolio":
+            return getMyPortfolio($request);
+        case "place_trade":
+            return doPlaceTrade($request);
         default:
-            return ["returnCode" => 98, "message" => "Unknown DB request type"];
+            return [
+                "returnCode" => 98, 
+                "status" => "error",
+                "message" => "Unknown DB request type"
+            ];
     }
 }
 

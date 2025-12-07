@@ -128,7 +128,7 @@ function requestProcessor($request)
         case "validate_session":
             return doValidate($request['sessionId'], $request['authToken']);
         default:
-            return ["returnCode" => 1, "message" => "Invalid request type"];
+            return ["returnCode" => 1, "message" => "Invalid request type :D"];
     }
 }
 

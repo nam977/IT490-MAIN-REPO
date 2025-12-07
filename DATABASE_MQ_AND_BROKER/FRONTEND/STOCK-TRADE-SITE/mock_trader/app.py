@@ -10,7 +10,7 @@ from flask import Flask, flash, jsonify, redirect, render_template, request, url
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("MOCK_TRADER_SECRET", "dev-secret")
 
-API_KEY_PATH = os.environ.get("ALPHA_VANTAGE_KEY_FILE", "/var/www/sample/alpha-vanguard-api-key.txt")
+API_KEY_PATH = os.environ.get("ALPHA_VANTAGE_KEY_FILE", "/var/www/sample/FRONTEND/alpha-vantage-api-key.txt")
 try:
     with open(API_KEY_PATH, "r", encoding="utf-8") as fh:
         API_KEY = fh.read().strip()
@@ -183,15 +183,87 @@ def portfolio_api():
     total_equity = _cash_balance + holdings_value
     return jsonify(
         {
+            "status": "success",  
             "starting_cash": STARTING_CASH,
             "cash_balance": _cash_balance,
             "holdings_value": holdings_value,
             "total_equity": total_equity,
             "holdings": holdings,
             "trades": _trade_history,
-        }
-    )
+        }), 200
 
+
+        
+@app.route("/api/trade", methods=["POST"])
+def trade_api():
+    payload = request.json or {}
+
+    action_raw_data = (payload.get("stockAction") or payload.get("action") or "").strip().lower()
+
+    if action_raw_data in {"stockbuy", "buy"}:
+        action = "buy"
+    elif action_raw_data in {"stocksell", "sell"}:
+        action = "sell"
+    else:
+        return jsonify({"status": "error", "message": "Invalid action. Use 'buy' or 'sell'."}), 400
+
+    symbol = (payload.get("symbol") or "").strip().upper()
+
+    try:
+        quantity = int(payload.get("quantity") or 0)
+    except (ValueError, TypeError):
+        quantity = 0
+
+    if not symbol:
+        return jsonify({"status": "error", "message": "Symbol is required for a trade."}), 400
+    if quantity <= 0:    
+        return jsonify({"status": "error", "message": "Quantity must be a positive whole number."}), 400
+
+    price, price_error = fetch_latest_price(symbol)
+
+    if price is None:
+        return jsonify({"status": "error", "message": price_error or "Unable to fetch price."}), 502
+
+    global _cash_balance
+
+    if action == "buy":
+        cost = price * quantity
+        if cost > _cash_balance:
+            return jsonify({"status": "error", "message": "Insufficient cash to complete purchase."}), 400
+        position    = _portfolio.setdefault(symbol, {"shares": 0.0, "avg_price": 0.0, "last_price": price})
+        total_shares = position["shares"] + quantity 
+        position["avg_price"] = ((position["shares"] * position["avg_price"]) + cost) / total_shares
+        position["shares"] = total_shares
+        position["last_price"] = price
+        _cash_balance -= cost
+        record_trade("BUY", symbol, quantity, price)
+    else:
+        position = _portfolio.get(symbol)
+        if not position or position.get("shares", 0.0) < quantity:
+            return jsonify({"status": "error", "message": "Not enough shares to sell."}), 400
+
+        revenue = price * quantity
+        position["shares"] -= quantity
+        position["last_price"] = price
+        _cash_balance += revenue
+        if position["shares"] <= 0:
+            _portfolio.pop(symbol, None)
+        record_trade("SELL", symbol, quantity, price)
+
+    holdings = build_holdings_snapshot()
+    holdings_value = sum(item["market_value"] for item in holdings)
+    total_equity = _cash_balance + holdings_value
+
+    return jsonify({
+        'status': 'success',
+        'symbol': symbol,
+        'price' : price,
+        'cash_balance': _cash_balance,
+        "holdings_value" : holdings_value,
+        "total_equity" : total_equity,
+        "holdings" : holdings,
+        "trades" : _trade_history,
+    }), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

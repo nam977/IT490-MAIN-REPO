@@ -163,7 +163,7 @@ function requestProcessor($request)
             $resp = doValidate($request['sessionId'], $request['authToken']);
             break;
         default:
-            $resp = ["returnCode" => 1, "message" => "Invalid request type"];
+            $resp = ["returnCode" => 1, "message" => "Invalid request type :D"];
             break;
     }
 

@@ -11,7 +11,7 @@ from flask import Flask, jsonify, render_template, request
 app = Flask(__name__)
 
 ALPHAVANTAGE_URL = "https://www.alphavantage.co/query"
-API_KEY_PATH = os.environ.get("ALPHA_VANTAGE_KEY_FILE", "/var/www/sample/alpha-vanguard-api-key.txt")
+API_KEY_PATH = os.environ.get("ALPHA_VANTAGE_KEY_FILE", "/var/www/sample/FRONTEND/alpha-vanguard-api-key.txt")
 DEFAULT_INTERVAL = os.environ.get("ALPHA_VANTAGE_INTERVAL", "1min")
 REQUEST_TIMEOUT = int(os.environ.get("ALPHA_VANTAGE_TIMEOUT", "10"))
 CACHE_TTL_SECONDS = int(os.environ.get("ALPHA_VANTAGE_CACHE_TTL", "45"))
