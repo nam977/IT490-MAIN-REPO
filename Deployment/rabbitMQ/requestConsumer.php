@@ -3,6 +3,31 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+/*$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
+if($mysqli->connect_errno){
+    echo "failed dataabase conection";
+}*/
+
+function sftpConnector($sftpHost,$sftpUsername,$sftpPassword){
+    $sftpConnection = ssh2_connect($sftpHost,22);
+
+    if(!$sftpConnection){
+        echo "failed sftp connecton";
+        return false;
+    }
+    if(!ssh2_auth_password($connectioin,$sftpUsername,$sftpPassword){
+       echo "failed sftp authentication";
+    return false;
+    }
+    $confirmedSftp = ssh2_sftp($sftpConnnction);
+    if(!confirmedSftp){
+        echo "connnction failed";
+        return false;
+    }
+    return ["connection"=>$sftpConnction,"sftp"=>$confirmedSftp];
+       
+}
+
 $connection = new AMQPStreamConnection('localhost', 5672, 'deployment', 'deployment');
 $channel = $connection->channel();
 
