@@ -3,6 +3,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+/*$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
+if($mysqli->connect_errno){
+    echo "failed dataabase conection";
+}*/
+
 $connection = new AMQPStreamConnection('localhost', 5672, 'deployment', 'deployment');
 $channel = $connection->channel();
 
