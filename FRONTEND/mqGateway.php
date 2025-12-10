@@ -1,6 +1,17 @@
 <?php
-declare(strict_types= 1);
+declare(strict_types= 1); # Enable strict typing
 
+/*
+    mqGateway.php
+
+    A gateway API that uses RabbitMQ to communicate with backend services.
+    Supports user authentication, portfolio management, and stock value retrieval.
+
+    CORS headers are set to allow cross-origin requests with credentials.
+    JSON input is expected and JSON responses are returned.
+
+    Session cookies are managed for authentication purposes.
+*/
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
 header("Access-Control-Allow-Origin: $origin");
 header('Access-Control-Allow-Credentials: true');
@@ -8,16 +19,25 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Vary: Origin');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { # Preflight request
+    http_response_code(200); # OK
     exit;
 }
+
+/*
+    Include required RabbitMQ library files
+*/
 
 require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 
-header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: application/json; charset=utf-8'); # Set response content type to JSON
+
+
+/*
+    Send a JSON response and terminate the script.
+*/
 
 function json_response(array $data, int $code = 200): never {
     http_response_code($code);
@@ -25,7 +45,7 @@ function json_response(array $data, int $code = 200): never {
     exit;
 }
 
-function set_session_cookies(array $session_cookie): bool {
+function set_session_cookie(array $session_cookie): bool {
     if (empty($session_cookie['session_id']) || empty($session_cookie['auth_token'])) return false;
 
     $expiresAt = $session_cookie['expires_at'] ?? '';
@@ -37,7 +57,7 @@ function set_session_cookies(array $session_cookie): bool {
     }
 
     $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== "off";
-
+    // Set cookies with appropriate flags
     $opts = [
         'expires'   => $expTs,
         'path'      => '/',
@@ -45,32 +65,35 @@ function set_session_cookies(array $session_cookie): bool {
         'httponly'  => true,
         'samesite'  => 'Lax'
     ];
-
+    // Set the cookies
     $ok1 = @setcookie('session_id', (string)$session_cookie['session_id'], $opts);
     $ok2 = @setcookie('auth_token', (string)$session_cookie['auth_token'], $opts);
     return $ok1 && $ok2;
 }
 
+// Clear session cookies
 function clear_session_cookies(): void {
     $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== "off";
 
-    $opts = [
+    $opts = [ // Expire cookies in the past
         'expires'    => time() - 3600,
         'path'       => '/',
         'secure'     => $secure,
         'httponly'   => true,
         'samesite'   => 'Lax'
     ];
-    @setcookie('session_id', '', $opts);
-    @setcookie('auth_token', '', $opts);
+    @setcookie('session_id', '', $opts); // Clear session_id cookie
+    @setcookie('auth_token', '', $opts); // Clear auth_token cookie
 }
 
-$raw = file_get_contents('php://input');
+$raw = file_get_contents('php://input'); // Read raw input data
 $input = null;
 
-if (is_string($raw) && $raw !== '') {
+if (is_string($raw) && $raw !== '') { // Attempt to decode JSON input
     $decoded = json_decode($raw, true);
-
+    /*
+        If JSON decoding is successful and results in an array, use it as input.
+    */
     if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
         $input = $decoded;
     }
@@ -82,15 +105,19 @@ if (!is_array($input)) {
 
 $type = strtolower((string)($input['type'] ?? ''));
 
+$workerType = $type;
+
+if ($type === "place_trade") {
+    $workerType = 'trade';
+} elseif($type === "get_portfolio") {
+    $workerType = 'valuate';
+}
+
 // allow existing types + new get_stock_value type
 $allowedTypes = [
     'login',
     'register',
     'validate_session',
-    'create_thread',
-    'list_threads',
-    'create_comment',
-    'list_comment',
     'get_stock_value', 
     'get_portfolio',
     'place_trade',
@@ -145,19 +172,26 @@ if ($type === 'get_stock_value') {
             'timeout' => 10,
         ]
     ]);
-
+    /*
+        Contact the backend stock service and retrieve stock data.
+    */
     $rawBackend = @file_get_contents($backendUrl, false, $ctx);
     if ($rawBackend === false) {
         json_response(['status' => 'error', 'error' => 'Failed to contact stock service'], 502);
         error_log("[gateway] Failed to contact stock service at $backendUrl");
         error_log("[gateway] Context: " . print_r($ctx, true));
     }
-
+    /*
+        Decode the JSON response from the backend stock service.
+    */
     $decoded = json_decode($rawBackend, true);
     if (!is_array($decoded)) {
         json_response(['status' => 'error', 'error' => 'Non-JSON response from stock service'], 502);
     }
 
+    /*   
+    Parse the time series data from the response.
+    */
     $tsKey = null;
     foreach ($decoded as $k => $v) {
         if (strpos($k, "Time Series") === 0) {
@@ -165,7 +199,9 @@ if ($type === 'get_stock_value') {
             break;
         }
     }
-
+    /*
+        Validate the time series data structure.
+    */
     if ($tsKey === null || !isset($decoded[$tsKey]) || !is_array($decoded[$tsKey])) {
         if (isset($decoded['Error Message'])) {
             json_response([
@@ -174,7 +210,7 @@ if ($type === 'get_stock_value') {
                 'detail' => $decoded['Error Message']
             ], 502);
         }
-        json_response([
+        json_response([ // Malformed response
             'status' => 'error', 
             'error' => 'Malformed response from stock service', 
             'detail' => $decoded], 
@@ -182,15 +218,20 @@ if ($type === 'get_stock_value') {
         );
     }
 
-    $timeSeries = $decoded[$tsKey];
+    $timeSeries = $decoded[$tsKey]; // Time series data
 
+    /*
+        Extract the latest price and historical data points.
+    */
     $times = array_keys($timeSeries);
     sort($times);
     $latestTime  = end($times);
     $latestPoint = $timeSeries[$latestTime] ?? null;
 
     $latestPrice = $latestPoint ? (float)($latestPoint['4. close'] ?? 0) : null;
-
+    /*
+        Build historical price data array.
+    */
     $history = [];
     foreach ($times as $t) {
         $pt = $timeSeries[$t] ?? null;
@@ -200,7 +241,9 @@ if ($type === 'get_stock_value') {
             'price' => (float)($pt['4. close'] ?? 0),
         ];
     }
-
+    /*
+        Return the stock value response.
+    */
     json_response([
         'status' => 'success',
         'symbol' => $symbol,
@@ -212,140 +255,103 @@ if ($type === 'get_stock_value') {
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
 
 $request = [
-    'type'          => $type,
+    'type'          => $workerType,
     'username'      => $username,
-    'password'      => $password,
-    'email'         => $email,
-    'session_id'    => $session_id,
-    'sessionId'     => $session_id,
-    'sessionid'     => $session_id,
     'auth_token'    => $auth_token,
-    'authToken'     => $auth_token,
-    'token'         => $auth_token,
-    "message"       => "Greeting from RabbitMQClient.php"
+    'session_id'    => $session_id,
 ];
 
-if ($type === 'create_thread') {
-    $request['title'] = $title;
-    $request['body']  = $body;
+/*
+    Add additional parameters based on request type 
+*/
+
+// Authentication requests
+if ($workerType === 'register'){
+    $request['username'] = $username;
+    $request['password'] = $password;
+    $request['email']    = $email;
+} elseif ($workerType === "login"){
+    $request['username'] = $username;
+    $request['password'] = $password;
+} elseif ($workerType === "validate_session"){
+    $request['sessionId'] = $session_id;
+    $request['authToken'] = $auth_token;
+} 
+
+/*
+    Portfolio / Trade requests
+*/
+
+if ($workerType === "trade"){
+    $request['symbol']          = $symbol;
+    $request['quantity']        = $quantity;
+    $request['tradeType']       = strtolower($trade_type);
+} elseif ($workerType === "valuate"){
+    // no additional parameters needed
+    $request['username'] = $username;
+    $request['sessionId'] = $session_id;
+    $request['authToken'] = $auth_token;
 }
 
-if ($type === "validate_session") {
-    $request['action']  = 'validateSession';
-    $request['op']      = 'validate_session';
-}
+/*
+    For debugging purposes, you can uncomment the following line to add a test message.
+*/
+$request['message'] = "Hello and welcome from RabbitMQClient.php";
 
-if ($type === "place_trade"){
-    $payload = json_encode([
-        'symbol'        => (string)($input['symbol'] ?? $input['tickerSymbol'] ?? ''),
-        'quantity'      => (int)($input['shareQuantity'] ?? $input['quantity'] ?? 0),
-        'stockAction'   => (string)($input['action'] ?? $input['stockAction'] ?? ''), 
-    ]);
-
-    $backendAPITradeUrl = "http://100.114.135.58:5001/api/trade";
-
-    $ctx = stream_context_create([
-        'http' => [
-            'method'  => 'POST',
-            'timeout' => 8,
-            'header'  => "Content-Type: application/json\r\n" .
-                         "Content-Length: " . strlen($payload) . "\r\n",
-            'content' => $payload,
-        ],   
-    ]);
-
-    $raw = @file_get_contents($backendAPITradeUrl, false, $ctx);
-
-    if($raw === false){
-        json_response([
-            'status' => 'error', 
-            'message' => 'Failed to contact trade Service'
-        ], 502);
-    }
-
-    $decoded = json_decode($raw, true);
-
-    if (!is_array($decoded)) {
-        json_response([
-            'status' => 'error', 
-            'message' => 'Non-JSON response from trade service',
-            'raw' => $raw,
-        ], 502);
-    }
-    json_response($decoded, 200);
-}
-
-if($type === "get_portfolio") {
-    $backendPortfolioUrl = "http://100.114.135.58:5001/api/portfolio";
-
-    $ctx = stream_context_create([
-        'http' => [
-            'method'  => 'GET',
-            'timeout' => 8,
-        ],   
-    ]);
-
-    $raw = @file_get_contents($backendPortfolioUrl, false, $ctx);
-    
-    if ($raw === false) {
-        json_response([
-            'status' => 'error', 
-            'message' => 'Failed to contact portfolio Service'
-        ], 502);
-    }
-
-    $decoded = json_decode($raw, true);
-
-    if (!is_array($decoded)) {
-        json_response([
-            'status' => 'error', 
-            'message' => 'Non-JSON response from portfolio service'
-        ], 502);
-    }
-
-    json_response($decoded, 200);
-}
-
-try {
-    $client = new rabbitMQClient("testRabbitMQ.ini","sharedServer");
-    error_log('[gateway] sending: ' . json_encode($request));
+/*
+    Create RabbitMQ client and send request to backend service.
+*/
+try{
+    $client = new rabbitMQClient("testRabbitMQ.ini", "sharedServer");
+    error_log("[gateway] Sending request of type '$workerType' (original: '$type') to RabbitMQ server");
     $response = $client->send_request($request);
-    error_log('[gateway] reply: ' . json_encode($response));
+    error_log("[gateway] Received response from RabbitMQ server: " . print_r($response, true)); // Log response for debugging   
 
-    if (!is_array($response)) {
-        $response = ['returnCode' => 99, 'message' => (string)$response];
+    if(!is_array($response)){
+        $response = ['returnCode' => 99, "message" => (string)$response]; // Handle non-array responses
     }
 
     $ok = false;
 
-    if (isset($response['status']) && strtolower((string)$response['status']) === 'success') $ok = true;
-    if (isset($response['returnCode']) && (int)$response['returnCode'] === 0) $ok = true;
+    if(isset($response['status']) && strtolower((string)$response['status']) === "success"){ // Check for success status
+        $ok = true;
+    }
+
+    if(isset($response['returnCode']) && (int)$response['returnCode'] === 0){ // Check for return code success
+        $ok = true;
+    }
 
     $cookieSet = false;
 
-    if ($ok && isset($response['session']) && is_array($response['session'])) {
-        $cookieSet = set_session_cookies($response['session']);
+    if($ok && isset($response['session']) && is_array($response['session'])){
+        $cookieSet = set_session_cookie($response['session']); // Set session cookies
     }
 
-    if ($type === 'validate_session' && !$ok) {
+    if($type === 'validate_session' && !$ok){
         clear_session_cookies();
-    }
+    }   
+
+    /*
+        Build the final response to be sent back to the client.
+    */
 
     $result = [
-        'status'        => $ok ? 'success' : 'error',
-        'returnCode'    => (int)($response['returnCode'] ?? ($ok ? 0 : 1)),
-        'message'       => $response['message'] ?? '',
-        'session'       => $response['session'] ?? null,
-        'cookieSet'     => $cookieSet,
-        'session_valid' => ($type === 'validate_session') ? $ok : null
+        'status'            => $ok ? 'success' : 'error',
+        'returnCode'        => (int)($response['returnCode'] ?? ($ok ? 0 : 1)),
+        'message'           => $response['message'] ?? '',
+        'session'           => $response['session'] ?? null,
+        'cookieSet'         => $cookieSet,
+        'session_valid'     => ($type === 'validate_session' ? $ok : null),
+
     ];
 
     json_response($result, 200);
-} catch (Throwable $e) {
-    error_log('testRabbitMQClient.php exception: ' . $e->getMessage());
-    json_response([
-        'status'    => 'error',
-        'returnCode'=> 1,
-        'message'   => 'Gateway Error communicating with backend'
-    ], 500);
+}catch(Exception $e){
+    error_log("[gateway] Exception occurred: " . $e->getMessage());
+    json_response( // Return error response on exception
+        [
+            'status' => 'error', 
+            'returnCode' => 1,
+            'error' => 'Gateway Error Communicating with backend'
+        ], 500);  
 }
