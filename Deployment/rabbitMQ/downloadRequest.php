@@ -7,6 +7,8 @@ use PhpAmqpLib\Message\AMQPMessage;
 //change these based on the machine
 $user = 'frontend';
 $pass = 'frontend';
+$ip = localhost;
+//
 
 
 $connection = new AMQPStreamConnection('localhost', 5672, $user, $pass);
@@ -24,7 +26,8 @@ $payload = [
     "asker" => $user,
     "file" => $file,
     "version" => $version,
-    "action" => "download"
+    "action" => "download",
+    "ip" => $ip
 ];
 
 $content = json_encode($payload);

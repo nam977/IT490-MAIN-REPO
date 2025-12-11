@@ -3,15 +3,21 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
-if($mysqli->connect_errno){
-    echo "failed dataabase conection";
-}
+
+$conn = new mysqli('localhost', 'root', 'IT490Admin@', 'deployment');
+
+
+if ($conn->connect_error) {
+    die("Connection to database failed (did you run the database setup on this machine?): " . $conn->connect_error . "\n");
+} 
+echo "Connected to database successfully!\n";
+
+
 
 function sftpConnector($sftpHost,$sftpUsername,$sftpPassword){
     $sftpConnection = ssh2_connect($sftpHost,22);
     if(!$sftpConnection){
-        echo "failed sftp connecton";
+        echo "failed sftp connection";
         return false;
     }
     if (!ssh2_auth_password($sftpConnection,$sftpUsername,$sftpPassword)){
@@ -48,6 +54,7 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
     //
     
     $asker = $data->asker;
+    $ip = $data->ip;
     $file = $data->file;
     $action = $data->action;
 
@@ -55,33 +62,11 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
         $distributionServerDirectory = "/../distribution/";
         //UPLOAD
         //if valid request, sftp, and update database
-        $uploadVersion = $data->version;
-        $uploadHost = $data->host;
-        $uploadUser = $data->user;
-        $uploadPasswd = $data->pass;
-        $uploadRemotePath = $data->remote_path;
+        $path = $data->path;
+        
 
-        $uploadSftp = sftpConnector($uploadHost,$uploadUser,$uploadPasswd);
-        if(!$uploadSftp){
-            echo "failed to connect to user for sftp";
-            return false;
-        }
-        if(!is_dir($distributionServerDirectory)){
-            mkdir($distributionServerDirectory,0775,true);
-        }
-        $localDistroPath = $distributionServerDirectory . $file . $version;
 
-        $remoteRead = fopen("ssh2.sftp://" . intval($uploadSftp["sftp"]) . $uploadRemotePath,'r');
-        if(!fileUpload){
-            echo "file failed to be read remotely";
-                                        return;
-        }
-        $remoteWrite = fopen($localDistroPath,'w');
-        stream_copy_to_stream($remoteRead,$remoteWrite);
-        fclose($remoteRead);
-        fclose($write);
 
-        echo "package saved"
     } else if ($action == "download") {
         //DOWNLOAD
         //if valid request then check database
