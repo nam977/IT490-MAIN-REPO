@@ -3,10 +3,10 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-/*$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
+$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
 if($mysqli->connect_errno){
     echo "failed dataabase conection";
-}*/
+}
 
 function sftpConnector($sftpHost,$sftpUsername,$sftpPassword){
     $sftpConnection = ssh2_connect($sftpHost,22);
@@ -35,14 +35,12 @@ $channel->queue_declare('deployment', false, true, false, false);
 
 echo " [*] Waiting for download/upload requests...\n";
 
-$callback = function (AMQPMessage $msg) {
+$callback = function (AMQPMessage $msg) use ($distributionDB){
     $data = json_decode($msg -> getBody());
-    echo ' [x] Received ', $msg->getBody(), "\n";
+    echo ' [x] Received '. $msg->getBody(), "\n";
     $msg -> ack();
-
-
+    
   //first checking the message if it is valid
-
     // "asker" => $user,
     // "file" => "",
     // "version" => "", (only in download)
@@ -56,9 +54,18 @@ $callback = function (AMQPMessage $msg) {
     if ($action == "upload"){
         //UPLOAD
         //if valid request, sftp, and update database
+        $uploadVersion = $data->version;
+        $uploadHost = $data->host;
+        $uploadUser = $data->user;
+        $uploadPasswd = $data->pass;
+        $uploadRemotePath = $data->remote_path;
+
+        $uploadSftp = sftpConnector($uploadHost,$uploadUser,$uploadPasswd);
+        if(!$uploadSftp){
+            echo "failed to connect to user for sftp;
+            return false;
+        }
         
-
-
     } else if ($action == "download") {
         //DOWNLOAD
         //if valid request then check database
