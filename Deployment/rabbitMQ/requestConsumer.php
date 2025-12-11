@@ -71,8 +71,17 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
         }
         $localDistroPath = $distributionServerDirectory . $file . $version;
 
-        
-        
+        $remoteRead = fopen("ssh2.sftp://" . intval($uploadSftp["sftp"]) . $uploadRemotePath,'r');
+        if(!fileUpload){
+            echo "file failed to be read remotely";
+                                        return;
+        }
+        $remoteWrite = fopen($localDistroPath,'w');
+        stream_copy_to_stream($remoteRead,$remoteWrite);
+        fclose($remoteRead);
+        fclose($write);
+
+        echo "package saved"
     } else if ($action == "download") {
         //DOWNLOAD
         //if valid request then check database
