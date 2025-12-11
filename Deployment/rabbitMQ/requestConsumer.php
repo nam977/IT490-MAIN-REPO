@@ -15,10 +15,11 @@ function sftpConnector($sftpHost,$sftpUsername,$sftpPassword){
         echo "failed sftp connecton";
         return false;
     }
-    if(!ssh2_auth_password($connectioin,$sftpUsername,$sftpPassword){
+    if (!ssh2_auth_password($connectioin,$sftpUsername,$sftpPassword)){
        echo "failed sftp authentication";
     return false;
     }
+
     $confirmedSftp = ssh2_sftp($sftpConnnction);
     if(!confirmedSftp){
         echo "connnction failed";
