@@ -3,15 +3,21 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-/*$distributionDB = new mysqli("127.0.0.1","deployment,deployment,deployment");
-if($mysqli->connect_errno){
-    echo "failed dataabase conection";
-}*/
+
+$conn = new mysqli('localhost', 'root', 'IT490Admin@', 'deployment');
+
+
+if ($conn->connect_error) {
+    die("Connection to database failed (did you run the database setup on this machine?): " . $conn->connect_error . "\n");
+} 
+echo "Connected to database successfully!\n";
+
+
 
 function sftpConnector($sftpHost,$sftpUsername,$sftpPassword){
     $sftpConnection = ssh2_connect($sftpHost,22);
     if(!$sftpConnection){
-        echo "failed sftp connecton";
+        echo "failed sftp connection";
         return false;
     }
     if (!ssh2_auth_password($sftpConnection,$sftpUsername,$sftpPassword)){
@@ -50,13 +56,16 @@ $callback = function (AMQPMessage $msg) {
     //
     
     $asker = $data->asker;
+    $ip = $data->ip;
     $file = $data->file;
     $action = $data->action;
 
     if ($action == "upload"){
         //UPLOAD
         //if valid request, sftp, and update database
+        $path = $data->path;
         
+
 
 
     } else if ($action == "download") {
