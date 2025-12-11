@@ -41,14 +41,12 @@ $channel->queue_declare('deployment', false, true, false, false);
 
 echo " [*] Waiting for download/upload requests...\n";
 
-$callback = function (AMQPMessage $msg) {
+$callback = function (AMQPMessage $msg) use ($distributionDB){
     $data = json_decode($msg -> getBody());
-    echo ' [x] Received ', $msg->getBody(), "\n";
+    echo ' [x] Received '. $msg->getBody(), "\n";
     $msg -> ack();
-
-
+    
   //first checking the message if it is valid
-
     // "asker" => $user,
     // "file" => "",
     // "version" => "", (only in download)
@@ -61,6 +59,7 @@ $callback = function (AMQPMessage $msg) {
     $action = $data->action;
 
     if ($action == "upload"){
+        $distributionServerDirectory = "/../distribution/";
         //UPLOAD
         //if valid request, sftp, and update database
         $path = $data->path;
