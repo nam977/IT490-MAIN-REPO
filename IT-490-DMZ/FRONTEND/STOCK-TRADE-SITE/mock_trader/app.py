@@ -7,6 +7,9 @@ from typing import Dict, List, Tuple
 import requests
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
+import mysql.connector
+from mysql.connector import Error
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("MOCK_TRADER_SECRET", "dev-secret")
 
@@ -22,6 +25,11 @@ _cash_balance: float = STARTING_CASH
 _portfolio: Dict[str, Dict[str, float]] = {}
 _trade_history: List[Dict[str, str]] = []
 
+
+DB_HOST = os.environ.get("DB_HOST", "192.168.20.20")
+DB_NAME = os.environ.get("DB_NAME", "testdb")
+DB_USER = os.environ.get("DB_USER", "dmzuser")
+DB_PASS = os.environ.get("DB_PASS", "Rv9991$#")
 
 def fetch_latest_price(symbol: str) -> Tuple[float | None, str | None]:
     """Return latest price for symbol or an error message."""
