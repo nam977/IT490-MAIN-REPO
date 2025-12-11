@@ -52,6 +52,7 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
     $action = $data->action;
 
     if ($action == "upload"){
+        $distributionServerDirectory = "/../distribution/";
         //UPLOAD
         //if valid request, sftp, and update database
         $uploadVersion = $data->version;
@@ -62,9 +63,15 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
 
         $uploadSftp = sftpConnector($uploadHost,$uploadUser,$uploadPasswd);
         if(!$uploadSftp){
-            echo "failed to connect to user for sftp;
+            echo "failed to connect to user for sftp";
             return false;
         }
+        if(!is_dir($distributionServerDirectory)){
+            mkdir($distributionServerDirectory,0775,true);
+        }
+        $localDistroPath = $distributionServerDirectory . $file . $version;
+
+        
         
     } else if ($action == "download") {
         //DOWNLOAD
