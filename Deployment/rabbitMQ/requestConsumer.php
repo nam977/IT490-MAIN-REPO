@@ -57,15 +57,16 @@ $callback = function (AMQPMessage $msg) use ($distributionDB){
     $ip = $data->ip;
     $file = $data->file;
     $action = $data->action;
+    $userName = $data->username;
+    $sshPass = $data->pass;
 
     if ($action == "upload"){
         $distributionServerDirectory = "/../distribution/";
         //UPLOAD
         //if valid request, sftp, and update database
         $path = $data->path;
-        
 
-
+        sftpConnector($ip,);
 
     } else if ($action == "download") {
         //DOWNLOAD
