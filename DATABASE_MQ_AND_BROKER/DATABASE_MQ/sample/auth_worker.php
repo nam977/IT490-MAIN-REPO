@@ -8,130 +8,291 @@ require_once __DIR__ . '/vendor/autoload.php';
 $db_host = '127.0.0.1';
 $db_user = 'testuser';
 $db_pass = 'rv9991$#';
-$db_name = 'testdb';
+$db_name = 'testdb';    
 
-$mydb = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($mydb->connect_errno != 0) {
-    echo "Failed to connect to database: " . $mydb->connect_error . PHP_EOL;
-    exit(0);
-}
-echo "Successfully connected to database as user: $db_user" . PHP_EOL;
+$brokerDB = new mysqli($db_host,$db_user,$db_pass,$db_name);
 
-function doRegister($username, $password, $email)
-{
-    global $mydb;
-    $stmt = $mydb->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows > 0) {
-        $stmt->close();
-        return ["returnCode" => 1, "message" => "Username already exists"];
-    }
-    $stmt->close();
-    $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-
-    $stmt = $mydb->prepare("INSERT INTO users (username, password, email) VALUES(?, ?, ?)");
-    $stmt->bind_param("sss", $username, $hashed_password, $email);
-
-    if (!$stmt->execute()) {
-        return ["returnCode" => 1, "message" => "Registration failed: " . $stmt->error];
-    }
-
-    $stmt->close();
-    return ["returnCode" => 0, "message" => "Registration successful"];
+if ($brokerDB -> connect_errno!= 0){
+    echo "failed to connect to the database" . $brokerDB -> connect_error . PHP_EOL;
+    exit();
+}else{
+    echo "successful database connectoin" . PHP_EOL;
 }
 
-function doLogin($username, $password)
-{
-    global $mydb;
+function tradeStock($request){
+    global $brokerDB;
 
-    $stmt = $mydb->prepare("SELECT password FROM users WHERE username = ? LIMIT 1");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $stmt->bind_result($hashed_password);
-    $stmt->fetch();
-    $stmt->close();
-
-    if (!$hashed_password) {
-        return ["returnCode" => 1, "message" => "User not found"];
+     if(!isset($request['username'])||!$request['auth_token']){
+        return ["returnCode"=>1,"message"=>"username and authentication token not set"];
     }
 
-    if (!password_verify($password, $hashed_password)) {
-        return ["returnCode" => 1, "message" => "Invalid password"];
+    $valueCheck=$brokerDB->prepare("SELECT username FROM user_cookies WHERE session_id = ? AND auth_token = ? AND expiration_time > NOW()");
+    $valueCheck->bind_param("ss",$request['session_id'],$request['auth_token']);
+    $valueCheck-> execute();
+    $valueCheck->bind_result($username);
+
+    if(!$valueCheck->fetch()){
+        return ["returnCode"=>1,"message"=>"session invalid"];
+    }
+    $stockPrices = $brokerDB->prepare("SELECT price FROM stock_prices WHERE symbol = ?" );
+    $stockPrices->bind_param("s",$request['symbol']);
+    $stockPrices->execute();
+    $stockPrices->bind_result($marketPrice);
+    if(!$stockPrices->fetch()){
+        return ["returnCode"=>1,"message"=>"symbol invalid for purchase"];
+    }
+    $stockPrices->close();
+
+    if($request['tradeType']=="buy"){
+        $tradeBuy = $brokerDB->prepare("SELECT id, shares, avg_price FROM portfolio_positions WHERE username = ? AND symbol = ?");
+        $tradeBuy->bind_param("ss",$username,$request['symbol']);
+        $tradeBuy->execute();
+        $tradeBuy->bind_result($storeTradeID,$prevStoreShares,$prevAvg);
+
+        if($tradeBuy->fetch()){
+            $newStoreShares = $prevStoreShares+$request['quantity'];
+            $newStoreAvg = ($prevStoreShares*$prevAvg)+($request['quantity']*$marketPrice)/$newStoreShares;
+
+            $updateToPrev = $brokerDB -> prepare("UPDATE portfolio_positions SET shares = ?, avg_prices = ?, last_price = ? WHERE id = ?");
+            $updateToPrev->bind_param("dddi",$newStoreShares,$newStoreAvg,$marketPrice,$storeTradeID);
+            $updateToPrev->execute();
+            
+            $updateToPrev->close();
+
+        }else{
+            $newTradeBuy = $brokerDB->prepare("INSERT INTO portfolio_prices (username,symbol,shares,avg_price,last_price) VALUES(?,?,?,?,?)");
+            $newTradeBuy->bind_param("ssddd",$username,$request['symbol'],$request['quantity'],$marketPrice,$marketPrice);
+            $newTradeBuy->execute();
+            $newTradeBuy->close();
+        }
+        $tradeBuy->close();
+    }elseif($request['tradeType']=="sell"){
+        $tradeSell = $brokerDB->prepare("SELECT id, shares, avg_price FROM portfolio_positions WHERE username = ? AND symbol = ?");
+        $tradeSell->bind_param("ss",$username,$request['symbol']);
+        $tradeSell->execute();
+        $tradeSell->bind_result($storeTradeID,$prevStoreShares,$prevAvg);
+
+        if(!$tradeSell->fetch()){
+            return ["returnCode"=>1,"message"=>"nothing to sell"];
+        }
+        $tradeSell->close();
+        if($prevStoreShares<$request['quantity']){
+            return["returnCode"=>1,"message"=>"shares too few"];
+        }
+        $newStoreShares = $prevStoreShares-$request['quantity'];
+        if($newStoreShares>0){
+
+            $newTradeSell = $brokerDB->prepare("UPDATE portfolio_positions SET shares = ?, last_price = ? WHERE id = ?");
+
+            $newTradeSell->bind_param("ddi",$newStoreShares,$marketPrice,$storeTradeID);
+            $newTradeSell->execute();
+            $newTradeSell->close();
+        }else{
+            $deleteTradeSell = $brokerDB->prepare("DELETE FROM portolio_positions WHERE id = ?");
+            $deleteTradeSell->bind_param("i",$storeTradeID);
+            $deleteTradeSell->execute();
+            $deleteTradeSell->close();
+        }
     }
 
-    $session_id = bin2hex(random_bytes(16));
-    $auth_token = bin2hex(random_bytes(32));
-    $expiration = date('Y-m-d H:i:s', time() + 3600);
+    $tradeLog=$brokerDB->prepare("INSERT INTO trade_history (username,action,symbol,price");
+    $tradeLog->bind_param("sss id",$username,$request['tradeType'],$request['symbol'],$request['quantity'],$marketPrice);
+    $tradeLog->execute();
+    $tradeLog->close();
 
-    $stmt = $mydb->prepare("
-        INSERT INTO user_cookies(session_id, username, auth_token, expiration_time)
-        VALUES(?, ?, ?, ?)
-    ");
-    $stmt->bind_param("ssss", $session_id, $username, $auth_token, $expiration);
+    return["returnCode"=>0,"message"=>"successful trade","symbol"=>$request['symbol'],"quantity"=>$request['quantity'],"price"=>$marketPrice];
+}
 
-    if (!$stmt->execute()) {
-        return ["returnCode" => 1, "message" => "Failed to create session: " . $stmt->error];
+function profileValuation($request){
+    global $brokerDB;
+
+    if(!isset($request['username'])||!$request['auth_token']){
+        return ["returnCode"=>1,"message"=>"username and authentication token not set"];
     }
-    $stmt->close();
+
+    $valueCheck=$brokerDB->prepare("SELECT username FROM user_cookies WHERE session_id = ? AND auth_token = ? AND expiration_time > NOW()");
+    $valueCheck->bind_param("ss",$request['session_id'],$request['auth_token']);
+    $valueCheck-> execute();
+    $valueCheck->bind_result($username);
+
+    if(!$valueCheck->fetch()){
+        return ["returnCode"=>1,"message"=>"session invalid"];
+    }
+
+    $profVal = $brokerDB->prepare("SELECT symbol,shares,avg_price,last_price FROM portfolio_positions WHERE username=?");
+    $profVal-> execute();
+    $resultVals = $profVal->get_result();
+    if($resultVals->num_rows==0){
+        return ["returnCode"=>1,"message"=>"nothing saved"];
+    }
+
+    $finalValuation = [];
+    $totalProfMarket = 0;
+    $totalGainLoss = 0;
+    
+    while($row = $resultVals->fetch_assoc()){
+        $symbol = $row['symbol'];
+        $shares = floatval($row['shares']);
+        $avgPrice = floatval($row['avg_price']);
+
+        $currentVal=$brokerDB->prepare("SELECT price FROM stock_prices WHERE symbol = ? ORDER BY updated_at DESC LIMIT 1");
+        $currentVal->bind_param("s",$symbol);
+        $currentVal->execute();
+        $currentVal->bind_result($currentPrice);
+        $currentVal->fetch();
+        $currentVal->close();
+
+        if(!$currentVal){
+            $currentPrice= $row['last_price'];
+        }
+
+        $marketVal = $shares*$currentPrice;
+        $gainLoss = ($currentPrice-$avgPrice)*$shares;
+        $gainLossPercentage = (($currentPrice-$avgPrice)/$avgPrice) * 100;
+
+        $finalValuation[]=[
+            'symbol' => $symbol,
+            'shares'=>$shares,
+            'avg_price'=>$avgPrice,
+            'current_price' => $currentPrice,
+            'market_value'=>$marketVal,
+            'gain_loss' => $gainLoss,
+            'gain_loss_percent'=>$gainLossPercentage
+        ];
+        $totalProfMarket+=$marketVal;
+        $totalGainLoss+=$gainLoss;
+    }
+
+    return ["returnCode"=>0,
+        "username"=>$username,
+        "valuation"=>$finalValuation,
+        "totals"=>[
+            "market_value" => $totalProfMarket,
+            "gain_loss"=>$totalGainLoss
+        ]
+    ];
+    
+}
+/*function doSearch($request){
+    global $brokerDB;
+    
+    if(!isset($request['username'])||!$request['auth_token']){
+        return ["returnCode"=>1,"message"=>"username and authentication token not set"];
+    }
+
+    $valueCheck=$brokerDB->prepare("SELECT username FROM user_cookies WHERE session_id = ? AND auth_token = ? AND expiration_time > NOW()");
+    $valueCheck->bind_param("ss",$request['session_id'],$request['auth_token']);
+    $valueCheck-> execute();
+    $valueCheck->bind_result($username);
+
+    if(!$valueCheck->fetch()){
+        return ["returnCode"=>1,"message"=>"session invalid"];
+    }
+
+    $searchQuery = $brokerDB->prepare("SELECT * FROM stock_prices WHERE symbol = ? LIMIT 1");
+    $searchQuery->bind_param("s",$request['symbol']);
+    
+}*/ 
+function doRegistration($username,$password,$email){
+    global $brokerDB; 
+    $registerCheckQuery = $brokerDB->prepare("SELECT*FROM users WHERE username = ? LIMIT 1");
+    $registerCheckQuery -> bind_param("s",$username);
+
+    $registerCheckQuery -> execute();
+    $registerCheckQuery -> store_result();
+
+    if($registerCheckQuery-> num_rows > 0){
+        $registerCheckQuery->close();
+        return ["returnCode"=>1,"message"=>"username already exists"];
+    }
+
+    $registerCheckQuery -> close();
+    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+    $registeredUserQuery = $brokerDB->prepare("INSERT INTO users (username,password,email) VALUES(?,?,?)");
+    $registeredUserQuery->bind_param("sss",$username,$passwordHash,$email);
+
+
+    if(!$registeredUserQuery->execute()){
+        return ["returnCode"=>1,"message"=>"failed registration:" . $registeredUserQuery->error];
+    }
+
+    $registeredUserQuery->close();
+    return["returnCode"=>1, "message"=>"successful registration"];
+}       
+
+function doLogin($username,$password){
+    global $brokerDB;
+
+    $loginQuery = $brokerDB->prepare("SELECT passsword FROM users WHERE username = ? LIMIT 1");
+    $loginQuery->bind_param("s",$username);
+    $loginQuery->execute();
+    $loginQuery->bind_result($hashedPassword);
+    $loginQuery->fetch();
+    $loginQuery->close(); 
+    if(!$hashedPassword){
+        return ["returnCode"=>1,"message"=>"nonexistent user"];
+    }
+    if(!password_verify($password,$hashedPassword)){
+        return ["returnCode"=>1,"message"=>"invalid password"];
+    }
+
+    $loginSessionID = bin2hex(random_bytes(16));
+    $loginAuthToken = bin2hex(random_bytes(32));
+    $sessonExpiration = date('Y-m-d H:i:s',time()+3600);
+    
+    $loginQuery=$brokerDB->prepare("INSERT INTO user_cookies(session_id, username, auth_token, expiration_time)VALUES(?, ?, ?, ?)");
+    if(!$loginQuery->execute()){
+        return ["returnCode"=>1,"message"=>"session startup failed"];
+    }
+    $loginQuery->close();
 
     return [
-        "returnCode" => 0,
-        "message" => "Login successful",
-        "session" => [
-            "session_id" => $session_id,
-            "auth_token" => $auth_token,
-            "expires" => $expiration
-        ]
+        "returnCode" => 0,"message" => "Login successful","session" => ["session_id" => $loginSessionID,"auth_token" => $loginAuthToken,"expires" => $sessonExpiration]
     ];
 }
 
-function doValidate($sessionId, $authToken)
-{
-    global $mydb;
+function doValidation($sessionID,$authToken){
+    global $brokerDB;
 
-    $stmt = $mydb->prepare("
-        SELECT username
-        FROM user_cookies
-        WHERE session_id = ? AND auth_token = ? AND expiration_time > NOW()
-    ");
-    $stmt->bind_param("ss", $sessionId, $authToken);
-    $stmt->execute();
-    $stmt->store_result();
+    $validationQuery = $brokerDB->prepare("SELECT username FROM user_cookies WHERE session_id = ? and auth_token = ? AND expiration_time > NOW()");
+    $validationQuery->bind_param("ss",$sessionID,$authToken);
+    $validationQuery->execute();
+    $validationQuery->store_result();
 
-    $isValid = $stmt->num_rows > 0;
-    $stmt->close();
-
-    if ($isValid) {
-        return ["returnCode" => 0, "message" => "Valid session"];
-    } else {
-        return ["returnCode" => 1, "message" => "Invalid session"];
+    $validationQueryCheck = $validationQuery->num_rows>0;
+    $validationQuery->close();
+    if($validationQueryCheck){
+        return["returnCode"=>0,"message"=>"Valid session"];
+    }else{
+        return["returnCode"=>1,"message"=>"Inalid session"];
     }
 }
 
-function requestProcessor($request)
-{
-    echo "Received request:" . PHP_EOL;
+function requestProcessor($request){
+      echo "Request Recevived" . PHP_EOL;
     var_dump($request);
 
     if (!isset($request['type'])) {
         return ["returnCode" => 1, "message" => "No type provided"];
     }
-
-    switch ($request['type']) {
+        switch ($request['type']) {
         case "register":
-            return doRegister($request['username'], $request['password'], $request['email']);
+            return doRegistration($request['username'], $request['password'], $request['email']);
         case "login":
             return doLogin($request['username'], $request['password']);
         case "validate_session":
-            return doValidate($request['sessionId'], $request['authToken']);
+            return doValidation($request['sessionId'], $request['authToken']);
+        case "trade":
+            return tradeStock($request);
+        case "valuate":
+            return profileValuation($request);
+        case "search":
         default:
             return ["returnCode" => 1, "message" => "Invalid request type :D"];
     }
-}
 
+  
+}
 $authServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer");
 echo "Authentictation Server ready and on standby..." . PHP_EOL;
 $authServerPid = pcntl_fork();
