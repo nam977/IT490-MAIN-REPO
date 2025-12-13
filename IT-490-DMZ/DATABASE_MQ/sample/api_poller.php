@@ -1,67 +1,54 @@
 #!/usr/bin/php
 <?php
-require_once __DIR__ . '/vendor/autoload.php'; 
-use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Message\AMQPMessage;
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
+require_once __DIR__ . '/vendor/autoload.php';
 
-$api_key = 'X06XHO4GPPMMFGJJ';
-$rabbitmq_host = '100.114.135.58'; 
-$rabbitmq_port = 5672;
-$rabbitmq_user = 'test';
-$rabbitmq_pass = 'test';
-$queue_name = 'price_updates';
-$date = date('Y-m-d H:i:s');
+$vantageAPI = 'X06XHO4GPPMMFGJJ'; 
+$stockSymbols = ["AAPL", "MSFT", "AMZN", "GOOG"];
 
-$all_stocks_to_track = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
+$stockClient = new rabbitMQClient("testRabbitMQ.ini", "sharedServer2");
 
-$current_hour = (int)date('G'); 
-$stock_to_fetch = $all_stocks_to_track[$current_hour % count($all_stocks_to_track)];
-$stocks_for_this_run = [$stock_to_fetch];
-
-try {
-    $connection = new AMQPStreamConnection(
-        $rabbitmq_host, 
-        $rabbitmq_port, 
-        $rabbitmq_user, 
-        $rabbitmq_pass
-    );
-    $channel = $connection->channel();
-    $channel->queue_declare($queue_name, false, true, false, false);
-
-    echo "[$date] Connected to RabbitMQ. Fetching " . implode(',', $stocks_for_this_run) . "\n";
-
-    foreach ($stocks_for_this_run as $symbol) {
-        $url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=$symbol&apikey=$api_key";
-        
-        $response_json = @file_get_contents($url);
-        $data = json_decode($response_json, true);
-
-        if (empty($data) || isset($data['Note']) || !isset($data['Global Quote']['05. price'])) {
-            $error_msg = $data['Note'] ?? 'Invalid response';
-            echo "Failed to fetch price for $symbol: $error_msg\n";
-            if(isset($data['Note'])) break; 
-            continue;
-        }
-
-        $price = $data['Global Quote']['05. price'];
-        
-        $payload = json_encode([
-            'symbol' => $symbol,
-            'price' => $price
-        ]);
-
-        $msg = new AMQPMessage($payload, ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
-        $channel->basic_publish($msg, '', $queue_name);
-
-        echo "Published price for $symbol: $price\n";
+function doFetch($symbol, $vantageAPI): float|null 
+{
+    $url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol="
+         . urlencode($symbol) . "&apikey={$vantageAPI}";
+    $json = @file_get_contents($url);
+    if (!$json){ 
+        return null;
+    }
+    $stockData = json_decode($json, true);
+    if (!isset($stockData['Global Quote']['05. price'])) {
+        echo "stockData is hasn't been pollled properly";
+        return null;
+    }else{
+        return (float)$stockData['Global Quote']['05. price'];
+    }
+}
+foreach ($stockSymbols as $stockSymbol) {
+    $stockPrice = doFetch($stockSymbol, $vantageAPI);
+    if ($stockPrice === null) {
+        echo "Failed fetch of {$stockSymbol}\n";
+        continue;
     }
 
-    $channel->close();
-    $connection->close();
-    echo "[$date] All prices published.\n";
+    echo "Succesful fetch of {$stockSymbol}: {$stockPrice}\n";
 
-} catch (Exception $e) {
-    echo 'Error: ' . $e->getMessage() . "\n";
+    $payload = [
+        "type" => "stock_price_update",
+        "symbol" => $stockSymbol,
+        "price" => $stockPrice,
+        "timestamp" => date('Y-m-d H:i:s')
+    ];
+
+    try {
+        $response = $stockClient->send_request($payload);
+        echo "Server response: " . json_encode($response) . "\n";
+    } catch (Exception $e) {
+        echo "Failed seneding {$stockSymbol} to server: {$e->getMessage()}\n";
+    }
+    sleep(15);
 }
-?>
 
+echo "Api Polling done\n";
