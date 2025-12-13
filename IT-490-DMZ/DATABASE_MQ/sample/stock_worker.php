@@ -6,59 +6,87 @@ require_once('rabbitMQLib.inc');
 
 require_once __DIR__ . '/vendor/autoload.php';
 $client_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-
-// Database credentials
 $db_host = '127.0.0.1';
 $db_user = 'testuser';
 $db_pass = 'rv9991$#';
 $db_name = 'testdb';
 
-// Connect to MySQL
-$mydb = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($mydb->connect_errno != 0) {
-    echo "Failed to connect to database: " . $mydb->connect_error . PHP_EOL;
-    exit(0);
+$brokerDB = new mysqli($db_host,$db_user,$db_pass,$db_name);
+$stockWorkerClient = new rabbitMQClient("testRabbitMQ.ini","sharedServer2");
+if ($brokerDB -> connect_errno!= 0){
+    echo "failed to connect to the database" . $brokerDB -> connect_error . PHP_EOL;
+    exit();
+}else{
+    echo "successful database connectoin" . PHP_EOL;
 }
 
 function requestProcessor($request){
-    global $mydb;
+    global $brokerDB,$stockWorkerClient;
 
-    if(!isset($request['symbol'])||!sset($request['price'])){
-        return ['status'=>'error','message'=>'invalid request' ];
+    if(!is_array($request)){
+        return ["returnCode"=>1,"message"=>"invalid request"];
     }
-    $symbol = $mydb->real_esscape_string($request['symbol']);
-    $price = floatval($request['price']);
-    $timestamp = date('Y-m-d H:i:s');
+    if (!isset($request['type']) || $request['type'] !== 'stock_price_update') {
+        return ["returnCode" => 1, "message" => "unsupported type"];
+    }
+    if (empty($request['symbol']) || !isset($request['price'])) {
+        return ["returnCode" => 1, "message" => "Missing symbol or price"];
+    }
 
-    $mydb->query("INSERT INTO stock_prices (symbol,price,updated_at) VALUES  ('$symbol',$price,'$timestamp')")l
-    $notification=[];
+    $stockSymbol = strtoupper(trim($request['symbol']));
+    $stockPrice = (float)$request['price'];
+    $stockTime = date('Y-m-d H:i:s');
 
-    $query = "SELECT username,avg_price,shares FROM portfolio_positions WHERE symbol = '$symbol'";
-    $result = $mydb->query($query);
+    $stockPriceQuery = $brokerDB->prepare("INSERT INTO stock_prices (symbol,price,updated_at) VALUES (?,?,?)");
+    $stockPriceQuery->bind_param("sds",$stockSymbol,$stockPrice,$stockTime);
+    $stockPriceQuery->execute();
 
-    while ($row = $result->fetch_assoc()){
-        $username = $row['username'];
-        $avg_price = floatval($row['avg_price']);
-        $shares = floatval($row['shares']);
+    $stockPriceQuery->close();
 
-        $high_threshhold = $avg_price*1.10;
-        $low_threshhold = $avg_price *0.90;
-        $alerttype=null;
-        if($price>=$high_threshhold) $alert_type = 'HIGH';
-        elseif ($price<=$high_threshhold) $alert_type = 'LOW';
+    $stockUserCheck= $brokerDB->prepare("SELECT username, shares, avg_price FROM portfolio_positions WHERE symbol = ?");
+    $stockUserCheck->bind_param("s",$stockSymbol);
+    $stockUserCheck->execute();
+    $stockUserCheck->bind_result($stockUsername,$stockShares,$stockAverage);
 
-        if($alerttype){
-            $notification[] = [
-                'username'=>$username,
-                'symbol'=>$symbol,
-                'price'=>$price,
-                'shares'=>$shares,
-                'alert'=>$alerttype,
-                'timestamp'=>$timestamp
+    $stockThreshhold = 0.05;
+    while($stockUserCheck->fetch()){
+        if($stockShares<=0){
+            continue;
+        }
+        $valueHigh=$stockAverage*(1+$stockThreshhold);
+        $valueLow=$stockAverage*(1-$stockThreshhold);
+        $stockAlert = null;
+
+        if($stockPrice>$valueHigh){
+            $stockAlert="high";
+        }elseif($stockPrice<=$valueLow){
+            $stockAlert="low";
+        }
+        $stockEmailQuery = $brokerDB->prepare("SELECT email FROM users WHERE username = ?");
+        $stockEmailQuery->bind_param("s",$stockUsername);
+        $stockEmailQuery->execute();
+        $stockEmailQuery->bind_result($stockEmailAddress);
+        $stockEmailQuery->fetch();
+        $stockEmailQuery->close();
+
+        if($stockAlert!==null){
+            $notifContent = [
+                "type"      => "stock_alert",
+                "username"  => $stockUsername,
+                "email" => $stockEmailAddress,
+                "symbol"    => $stockSymbol,
+                "price"     => $stockPrice,
+                "alertType" => $stockAlert,
+                "timestamp" => $stockTime
             ];
+
+            try{
+               $response = $stockWorkerClient->send_request($notifContent);
+            }catch (Exception $e){
+                echo "failed alert";
+            }
         }
     }
-    return['status'=>'success','notifications'=>$notificaton]
 }
 
 $stockServer = new rabbitMQServer("testRabbitMQ.ini","sharedServer2");
@@ -68,4 +96,3 @@ if ($stockServerPid == 0){
     $stockServer->process_requests('requestProcessor');
     exit();
 }
-?>
