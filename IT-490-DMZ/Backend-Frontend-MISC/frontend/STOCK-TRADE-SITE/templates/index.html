@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>View My Stock Price Symbol</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Stock Price Retriever</h1>
+    <input id="symbol" type="text" placeholder="Enter Stock Symbol" />
+    <button onclick="retrieveStock()">Get Price</button>
+    <h2 id="price"></h2>
+    <canvas id="priceChart" width="400" height="200"></canvas>
+</body>
+<script>
+    // Keep a reference to the Chart instance so we can destroy or update it
+    let priceChartInstance = null;
+    async function retrieveStock() {
+        const symbol = document.getElementById('symbol').value.trim();
+        if (!symbol) {
+            alert('Please enter a stock symbol');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/stock?symbol=${encodeURIComponent(symbol)}`);
+
+            // If server returned non-2xx, try to parse JSON diagnostic payload
+            if (!response.ok) {
+                let text;
+                try {
+                    const json = await response.json();
+                    text = json.error || JSON.stringify(json);
+                } catch (e) {
+                    text = await response.text();
+                }
+                document.getElementById('price').innerText = `Error: ${text}`;
+                return;
+            }
+
+            // Ensure content-type is JSON before parsing
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const txt = await response.text();
+                document.getElementById('price').innerText = `Unexpected response: ${txt}`;
+                return;
+            }
+
+            const data = await response.json();
+
+            // AlphaVantage may return 'Time Series (1min)' or 'Time Series (5min)'
+            const tsKey = Object.keys(data).find(k => k.startsWith('Time Series'));
+            if (!tsKey) {
+                document.getElementById('price').innerText = 'No time series data available';
+                return;
+            }
+
+            const stockTime = data[tsKey];
+            const labels = Object.keys(stockTime).reverse();
+            // AlphaVantage uses '1. open' for the open price and '4. close' for the close price.
+            const prices = labels.map(time => parseFloat(stockTime[time]['1. open']));
+            const latest = prices[prices.length - 1];
+            document.getElementById('price').innerText = Number.isFinite(latest) ? `Current Price: ${latest}` : 'Current Price: N/A';
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // If there's an existing chart instance using this canvas, destroy it
+            if (priceChartInstance) {
+                try { priceChartInstance.destroy(); } catch (e) { /* ignore */ }
+                priceChartInstance = null;
+            }
+
+            // Create a new chart and store the instance so we can reuse/destroy later
+            priceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: prices,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                }
+            });
+        } catch (err) {
+            document.getElementById('price').innerText = `Request failed: ${err.message}`;
+        }
+    }
+</script>
