@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Steddit Threads</title>
+    </head>
+    <body>
+        <h1>Forum Threads</h1>
+        <div id="threadsContainer"></div>
+            <!-- Threads will be dynamically loaded here -->
+             <h3> Create a New Thread</h3>
+             <input type="text" id="title" placeholder="Thread Title" required/>
+             <textarea id="body" placeholder="What do you want to discuss?" rows="5" required></textarea>
+                <button id="createThreadButton">Create Thread</button>
+
+    <script>
+        let threads = [
+            {
+            'status': 'success',
+            'threads' : [
+                {
+                    'id': 1,
+                    'title': 'Welcome to Steddit!',
+                    'author': 'admin',
+                    'created_at': '2024-01-01T12:00:00Z',
+                    'posts_count': 5
+                },
+                {
+                    'id': 2,
+                    'title': 'General Discussion Thread',
+                    'author': 'user123',
+                    'created_at': '2024-02-15T08:30:00Z',
+                    'posts_count': 12
+                },
+                {
+                    'id': 3,
+                    'title': 'IT490 Project Ideas',
+                    'author': 'student456',
+                    'created_at': '2024-03-10T14:45:00Z',
+                    'posts_count': 8
+                }
+            ]};
+</script>
+</body> 
+</html>
