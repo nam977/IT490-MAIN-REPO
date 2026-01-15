@@ -20,7 +20,7 @@ fi
 
 # Configuration
 My_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_FOLDER="$My_SCRIPT_DIR/dmz/IT-490-FRONTEND"
+FRONTEND_FOLDER="$My_SCRIPT_DIR/frontend/FRONTEND"
 BACKEND_FOLDER="$My_SCRIPT_DIR/database-mq/IT-490-DATABASE-MQ"
 FRONTEND_LOCATION="/var/www/frontend"
 BACKEND_LOCATION="/var/www/backend"
