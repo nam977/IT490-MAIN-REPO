@@ -1,0 +1,88 @@
+---
+- name: Deploy frontend app
+  hosts: frontend
+  become: true
+  vars: 
+    frontend_src: "/home/deployment/code/FRONTEND"
+    frontend_dest: /var/www/sample
+  tasks:
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ frontend_dest }}"
+        state: directory
+        owner: nam
+        group: nam
+        mode: "0755"
+    - name: Sync frontend code
+      synchronize:
+        src: "{{ frontend_src}}/"
+        dest: "{{ frontend_dest }}/"
+        delete: no
+      delegate_to: localhost
+    - name: Ensure apache2 is operational
+      service:
+        name: apache2
+        state: started
+        enabled: true
+- name: Deploy Backend-DB+BROKER_MQ Code
+  hosts: backend
+  become: true
+  vars:
+    backend_src: "/home/deployment/code/DATABASE_MQ_AND_BROKER"
+    backend_dest: /opt/it490/backend
+  tasks:
+    - name: Ensure backend directory exists
+      file:
+        path: "{{ backend_dest }}"
+        state: directory
+        owner: abra490
+        group: abra490
+        mode: "0755"
+
+    - name: Sync backend code
+      synchronize:
+        src: "{{ backend_src }}/"
+        dest: "{{ backend_dest }}/"
+        delete: no
+      delegate_to: localhost
+    - name: Ensure rabbitmq and mysql are operational
+      service:
+        name: rabbitmq-server
+        state: started
+        enabled: true
+    - name: Ensure mysql is operational
+      service:
+        name: mysql
+        state: started
+        enabled: true
+- name: Deploy DMZ AlphaVantage fetcher
+  hosts: dmz
+  become: true
+  vars: 
+    dmz_src: "/home/deployment/code/IT-490-DMZ"
+    dmz_dest: /opt/it490/dmz
+  tasks:
+    - name: Ensure DMZ directory actually exists
+      file:
+        path: "{{ dmz_dest }}"
+        state: directory
+        owner: it-490-dmz
+        group: it-490-dmz
+        mode: "0755"
+    - name: Sync DMZ Codebase
+      synchronize:
+        src: "{{ dmz_src }}/"
+        dest: "{{ dmz_dest }}/"
+        delete: no
+      delegate_to: localhost
+    - name: Install python package requirements for dmz
+      pip:
+        requirements: "{{ dmz_dest }}/requirements.txt"  
+        executable: pip3
+        extra_args: --break-system-packages
+    - name: Ensure dmz-fetcher.timer is operational
+      service:
+        name: dmz-fetcher.timer
+        state: started
+        enabled: true
+      ignore_errors: yes
