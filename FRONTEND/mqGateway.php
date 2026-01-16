@@ -163,7 +163,11 @@ if ($type === 'get_stock_value') {
 
     // Adjust this IP if your backend+broker uses a different address
 <<<<<<< HEAD
+<<<<<<< HEAD
     $backendUrl = "http://127.0.0.1:5002/getStockValues?symbol="
+=======
+    $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
 >>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
@@ -257,6 +261,7 @@ if ($type === 'get_stock_value') {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 if($type === 'place_trade'){
 	
 	$symbol = strtoupper((string)($input['symbol'] ?? ''));
@@ -341,6 +346,8 @@ if ($type === 'get_portfolio') {
 	json_response($decoded, 200);
 }
 
+=======
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
 >>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
@@ -446,7 +453,11 @@ try{
             'error' => 'Gateway Error Communicating with backend'
         ], 500);  
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
 }
 >>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
