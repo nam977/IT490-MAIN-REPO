@@ -1,47 +1,24 @@
 {
-    "name": "php-amqplib/php-amqplib",
-    "replace": {
-        "videlalvaro/php-amqplib": "self.version"
-    },
+    "name": "videlalvaro/php-amqplib",
     "type": "library",
-    "description": "Formerly videlalvaro/php-amqplib.  This library is a pure PHP implementation of the AMQP protocol. It's been tested against RabbitMQ.",
+    "description": "This library is a pure PHP implementation of the AMQP protocol. It's been tested against RabbitMQ.",
     "keywords": ["rabbitmq", "message", "queue"],
-    "homepage": "https://github.com/php-amqplib/php-amqplib/",
+    "homepage": "https://github.com/videlalvaro/php-amqplib/",
     "authors": [
         {
-            "name": "Alvaro Videla",
-            "role": "Original Maintainer"
-        },
-        {
-            "name": "Raúl Araya",
-            "email": "nubeiro@gmail.com",
-            "role": "Maintainer"
-        },
-        {
-            "name": "Luke Bakken",
-            "email": "luke@bakken.io",
-            "role": "Maintainer"
-        },
-        {
-            "name": "Ramūnas Dronga",
-            "email": "github@ramuno.lt",
-            "role": "Maintainer"
+            "name" : "Alvaro Videla"
         }
     ],
     "require": {
-        "php": "^7.2||^8.0",
-        "ext-sockets": "*",
-        "ext-mbstring": "*",
-        "phpseclib/phpseclib": "^2.0|^3.0"
+        "php": ">=5.3.0",
+        "ext-bcmath": "*",
+        "ext-mbstring": "*"
     },
     "require-dev": {
-        "ext-curl": "*",
-        "phpunit/phpunit": "^7.5|^9.5",
-        "squizlabs/php_codesniffer": "^3.6",
-        "nategood/httpful": "^0.2.20"
+        "phpunit/phpunit": "3.7.*"
     },
-    "conflict": {
-        "php": "7.4.0 - 7.4.1"
+    "suggest": {
+        "ext-sockets": "Use AMQPSocketConnection"
     },
     "autoload": {
         "psr-4": {
@@ -54,10 +31,10 @@
             "PhpAmqpLib\\Tests\\Unit\\": "tests/Unit"
         }
     },
-    "license": "LGPL-2.1-or-later",
+    "license": "LGPL-2.1",
     "extra": {
         "branch-alias": {
-            "dev-master": "3.0-dev"
+            "dev-master": "2.4-dev"
         }
     }
 }
