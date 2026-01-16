@@ -1,33 +1,49 @@
 <?php
-
 namespace PhpAmqpLib\Connection;
 
-/**
- * @deprecated AMQPStreamConnection can be lazy too. Use AMQPConnectionFactory with AMQPConnectionConfig::setIsLazy(true)
- */
 class AMQPLazyConnection extends AMQPStreamConnection
 {
     /**
-     * @inheritDoc
+     * Gets socket from current connection
+     *
+     * @deprecated
      */
-    public function connectOnConstruct(): bool
+    public function getSocket()
     {
-        return false;
+        $this->connect();
+
+        return parent::getSocket();
     }
 
     /**
-     * @param string[][] $hosts
-     * @param string[] $options
-     * @return self
-     * @throws \Exception
-     * @deprecated Use ConnectionFactory
+     * {@inheritdoc}
      */
-    public static function create_connection($hosts, $options = array())
+    public function channel($channel_id = null)
     {
-        if (count($hosts) > 1) {
-            throw new \RuntimeException('Lazy connection does not support multiple hosts');
+        $this->connect();
+
+        return parent::channel($channel_id);
+    }
+
+    /**
+     * @return null|\PhpAmqpLib\Wire\IO\AbstractIO
+     */
+    protected function getIO()
+    {
+        if (!$this->io) {
+            $this->connect();
         }
 
-        return parent::create_connection($hosts, $options);
+        return $this->io;
+    }
+
+    /**
+     * Should the connection be attempted during construction?
+     *
+     * @return bool
+     */
+    public function connectOnConstruct()
+    {
+        return false;
     }
 }

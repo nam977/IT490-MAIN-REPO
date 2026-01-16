@@ -296,13 +296,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Populate trades table
             tradesTableBody.innerHTML = '';
-            if (data.recent_trades && data.recent_trades.length) {
-                data.recent_trades.forEach(trade => {
+            const trades = data.trades || [];
+            if (trades.length) {
+                trades.forEach(trade => {
                     const row = document.createElement('tr');
                     
                     const dateId = document.createElement('td');
-                    const datetime = new Date(trade.datetime);
-                    dateId.textContent = datetime.toLocaleString();
+                    dateId.textContent = trade.timestamp;
                     row.appendChild(dateId);
 
                     const actionId = document.createElement('td');
@@ -314,15 +314,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.appendChild(symbolId);
 
                     const sharesId = document.createElement('td');
-                    sharesId.textContent = trade.shares;
+                    sharesId.textContent = trade.quantity;
                     row.appendChild(sharesId);
 
                     const priceId = document.createElement('td');
-                    priceId.textContent = formatMoney(trade.price_per_share);
+                    priceId.textContent = formatMoney(trade.price);
                     row.appendChild(priceId);
 
                     const totalId = document.createElement('td');
-                    totalId.textContent = formatMoney(trade.total_price);
+                    totalId.textContent = formatMoney((Number(trade.price) || 0) * (Number(trade.quantity) || 0));
                     row.appendChild(totalId);
                     
                     tradesTableBody.appendChild(row);
@@ -358,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 symbol: symbol,
                 quantity: stockQuantity,
                 action: stockAction,
+                mock: true
             });
             console.log('place_trade:', gatewayData);
 
