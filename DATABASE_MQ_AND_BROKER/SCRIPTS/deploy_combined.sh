@@ -20,7 +20,7 @@ fi
 
 # Configuration
 My_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_FOLDER="$My_SCRIPT_DIR/dmz/IT-490-FRONTEND"
+FRONTEND_FOLDER="$My_SCRIPT_DIR/frontend/FRONTEND"
 BACKEND_FOLDER="$My_SCRIPT_DIR/database-mq/IT-490-DATABASE-MQ"
 FRONTEND_LOCATION="/var/www/frontend"
 BACKEND_LOCATION="/var/www/backend"
@@ -83,7 +83,7 @@ EOF
 
 # Import database schema if exists
 if [ -f "$BACKEND_FOLDER/testdb.sql" ]; then
-    echo "Importing da`tabase schema..."
+    echo "Importing database schema..."
     mysql -u $DB_USER -p"$DB_PASS" $DB_NAME < "$BACKEND_FOLDER/testdb.sql" 2>/dev/null || echo "Schema import skipped (may already exist)"
 fi
 

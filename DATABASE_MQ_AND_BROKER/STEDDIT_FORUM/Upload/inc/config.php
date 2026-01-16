@@ -8,7 +8,7 @@
  */
 
 $config['database']['type'] = 'mysqli';
-$config['database']['database'] = 'testdb';
+$config['database']['database'] = 'mybb_forum';
 $config['database']['table_prefix'] = 'mybb_';
 
 $config['database']['hostname'] = 'localhost';
