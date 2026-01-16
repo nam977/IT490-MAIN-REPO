@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT490 Test Login Page</title>
+    </head>
+<body>
+    <section class="MainHeaderContainer">
+        <header class="MainHeader">
+            <h1>Login Below!</h1>
+        </header>
+        <div id="textResponse">
+            awaiting response
+            <form id="loginForm">
+                <label for="username">Enter username:</label><br>
+                <input type="text" for="username" name="username" id="username" placeholder="username" required>
+                <br>
+                
+                <label for="password">Enter Password:</label><br>
+                <input type="password" for="password" name="password" id="password" required>
+                <br>
+                <input type="hidden" name="type" value="login">
+                <input type="submit" value="login"> 
+            </form>
+        </div>
+    </section>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const output = document.getElementById("textResponse");
+
+        const persistSession = (session = {}) => {
+            if (!session || typeof session !== 'object') return false;
+            const rawSessionId = session.session_id || session.sessionId || session.sessionID || session.SessionID;
+            const rawAuthToken = session.auth_token || session.authToken || session.token;
+            const rawLoginTime = session.login_time || session.loginTime || new Date().toISOString();
+
+            const sessionId = rawSessionId && rawSessionId !== 'null' && rawSessionId !== 'undefined' ? rawSessionId : '';
+            const authToken = rawAuthToken && rawAuthToken !== 'null' && rawAuthToken !== 'undefined' ? rawAuthToken : '';
+            const loginTime = rawLoginTime && rawLoginTime !== 'null' && rawLoginTime !== 'undefined' ? rawLoginTime : new Date().toISOString();
+
+            if (!sessionId || !authToken) return false;
+
+            sessionStorage.setItem('session_id', sessionId);
+            sessionStorage.setItem('auth_token', authToken);
+            sessionStorage.setItem('login_time', loginTime);
+            localStorage.setItem('session_id', sessionId);
+            localStorage.setItem('auth_token', authToken);
+            localStorage.setItem('login_time', loginTime);
+            return true;
+        };
+
+        function HandleLoginResponse(xhr)
+        {
+            if (xhr.status !== 200) {
+                output.textContent = "Server Error: " + xhr.status + " " + xhr.statusText;
+                return;
+            }
+
+            let res;
+
+            try { res = JSON.parse(xhr.responseText); } 
+            catch { output.textContent = "Error parsing server response."; return; }
+
+            const success = 
+                (res.status && res.status.toLowerCase() === "success") ||
+                (res.returnCode === 0);
+            
+            if (success && res.session && persistSession(res.session)) {
+                output.textContent = "Login successful! Redirecting to main page.";
+                window.location.href = "loggedin.html";
+            } else {
+                output.textContent = "Login failed: " + (res.message || "Unknown error");
+            }
+        }
+
+        function SendLoginRequest(loginData)
+        {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST","mqGateway.php");
+            xhr.setRequestHeader("Content-Type","application/json");
+            xhr.onreadystatechange = function () {
+                if (this.readyState == 4) { console.log("Server Response:", this.responseText); HandleLoginResponse(this); }		
+            };
+            xhr.send(JSON.stringify(loginData));
+        }
+        
+        document.getElementById("loginForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+            SendLoginRequest({ type: "login", username, password});
+        });
+    });  
+</script>
+</body>
+</html>
