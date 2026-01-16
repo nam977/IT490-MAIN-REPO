@@ -164,6 +164,7 @@ if ($type === 'get_stock_value') {
     // Adjust this IP if your backend+broker uses a different address
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
 =======
     $backendUrl = "http://127.0.0.1:5002/getStockValues?symbol="
@@ -171,6 +172,9 @@ if ($type === 'get_stock_value') {
 =======
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
 >>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
+=======
+    $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
+>>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
                   . urlencode($symbol) . "&interval=" . urlencode($interval);
                   
 
@@ -262,6 +266,7 @@ if ($type === 'get_stock_value') {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 if($type === 'place_trade'){
 	
@@ -350,6 +355,8 @@ if ($type === 'get_portfolio') {
 >>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
 =======
 >>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
+=======
+>>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
 
 $request = [
@@ -454,6 +461,7 @@ try{
         ], 500);  
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
 =======
 }
@@ -461,3 +469,6 @@ try{
 =======
 }
 >>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
+=======
+}
+>>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e

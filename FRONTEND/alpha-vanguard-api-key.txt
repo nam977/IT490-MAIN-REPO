@@ -1,5 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 D2ITONOM395M6NDO
 =======
 KYW1HKEH0N22S3NR
 >>>>>>> 9383578 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing. added additional files)
+=======
+D2ITONOM395M6NDO
+>>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
