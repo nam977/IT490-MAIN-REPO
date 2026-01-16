@@ -163,10 +163,14 @@ if ($type === 'get_stock_value') {
 
     // Adjust this IP if your backend+broker uses a different address
 <<<<<<< HEAD
+<<<<<<< HEAD
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
 =======
     $backendUrl = "http://127.0.0.1:5002/getStockValues?symbol="
 >>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
+=======
+    $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
+>>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
                   . urlencode($symbol) . "&interval=" . urlencode($interval);
                   
 
@@ -257,6 +261,7 @@ if ($type === 'get_stock_value') {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 if($type === 'place_trade'){
 	
@@ -343,6 +348,8 @@ if ($type === 'get_portfolio') {
 }
 
 >>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
+=======
+>>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
 
 $request = [
@@ -446,7 +453,11 @@ try{
             'error' => 'Gateway Error Communicating with backend'
         ], 500);  
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
 =======
 }
 >>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
+=======
+}
+>>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
