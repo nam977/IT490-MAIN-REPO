@@ -164,17 +164,13 @@ if ($type === 'get_stock_value') {
     // Adjust this IP if your backend+broker uses a different address
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
-    $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
-=======
     $backendUrl = "http://127.0.0.1:5002/getStockValues?symbol="
->>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
 =======
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
->>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
->>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
                   . urlencode($symbol) . "&interval=" . urlencode($interval);
                   
 
@@ -266,8 +262,6 @@ if ($type === 'get_stock_value') {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
-=======
 if($type === 'place_trade'){
 	
 	$symbol = strtoupper((string)($input['symbol'] ?? ''));
@@ -352,11 +346,10 @@ if ($type === 'get_portfolio') {
 	json_response($decoded, 200);
 }
 
->>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
 =======
->>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
->>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
 
 $request = [
@@ -461,14 +454,10 @@ try{
         ], 500);  
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
 }
 =======
 }
->>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
 =======
 }
->>>>>>> c60d851d643971405856ab6eefad8ffd66079e10
-=======
-}
->>>>>>> 84e05c48c6b4798e179f12a4fad5725f4cb9ac2e
+>>>>>>> 9da90fcd3c364d8c5eac906d3bf38d9aef2b93d4
