@@ -162,7 +162,11 @@ if ($type === 'get_stock_value') {
     }
 
     // Adjust this IP if your backend+broker uses a different address
+<<<<<<< HEAD
     $backendUrl = "http://100.114.135.58:5002/getStockValues?symbol="
+=======
+    $backendUrl = "http://127.0.0.1:5002/getStockValues?symbol="
+>>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
                   . urlencode($symbol) . "&interval=" . urlencode($interval);
                   
 
@@ -252,6 +256,93 @@ if ($type === 'get_stock_value') {
     ], 200);
 }
 
+<<<<<<< HEAD
+=======
+if($type === 'place_trade'){
+	
+	$symbol = strtoupper((string)($input['symbol'] ?? ''));
+
+	if ($symbol === '' || !preg_match('/^[A-Z0-9][A-Z0-9.-]{0,14}$/', $symbol)) {
+		json_response(['status' => 'error', 'error' => 'Invalid Stock Symbol'], 400);
+	}
+
+	$quantity = (int)($input['quantity'] ?? 0);
+
+	if ($quantity <= 0) {
+		json_response(['status' => 'error', 'error' => 'Quantity must be a positive number of shares'], 400);
+	}
+
+	$action = strtolower((string)($input['action'] ?? ($input['stockAction'] ?? '')));
+
+	if ($action === 'stockbuy') $action = 'buy';
+
+	if ($action === 'stocksell') $action = 'sell';
+
+	if (!in_array($action, ['buy', 'sell'], true)) {
+		json_response(['status' => 'error', 'error' => 'Invalid action (use buy or sell)'], 400);
+	}
+
+	if (!empty($input['mock'])) {
+		$backendUrl = "http://127.0.0.1:5001/api/trade";
+		
+		$ctx = stream_context_create([
+			'http' =>  [
+				'method' 	=> 'POST',
+				'timeout' 	=> 10,
+				'header'	=> "Content-Type: application/json\r\n",
+				'content'	=> json_encode([
+					'symbol'	=> $symbol,
+					'quantity'	=> $quantity,
+					'action'	=> $action,
+				])
+			]
+		]);
+
+		$rawBackend = @file_get_contents($backendUrl, false, $ctx);
+
+		if ($rawBackend === false) {
+			json_response(['status' => 'error', 'error' => 'Failed to contact mock trade service'], 502);
+		}
+
+		$decoded = json_decode($rawBackend, true);
+
+		if (!is_array($decoded)) {
+                        json_response(['status' => 'error', 'error' => 'Non-JSON response from mock trade service'], 502);
+		}
+
+		json_response($decoded, 200);
+	}
+}
+
+if ($type === 'get_portfolio') {
+
+	$backendUrl = "http://127.0.0.1:5001/api/portfolio";
+
+	$ctx = stream_context_create([
+		'http' => [
+			'method' 	=> 'GET',
+			'timeout' 	=> 10,	
+		]
+	]);
+
+	$rawBackend = @file_get_contents($backendUrl, false, $ctx);
+
+	if ($rawBackend === false) {
+		json_response(['status' => 'error', 'error' => 'Failed to contact portfolio service'], 502);
+		error_log(`[gateway] Failed to contact portfolio service at ${backendUrl}`);
+		error_log("[gateway] Context: " . print_r($ctx, true));
+	}
+
+	$decoded = json_decode($rawBackend, true);
+
+	if (!is_array($decoded)) {
+		json_response(['status' => 'error', 'error' => 'Non-JSON response from portfolio service'], 502);
+	}
+
+	json_response($decoded, 200);
+}
+
+>>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
 // ========== NORMAL RABBITMQ FLOW FOR LOGIN / REGISTER / FORUM ==========
 
 $request = [
@@ -354,4 +445,8 @@ try{
             'returnCode' => 1,
             'error' => 'Gateway Error Communicating with backend'
         ], 500);  
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 3fe2ec0 (added if statements for get_portfolio and make_trade for app.py services in connection to alphavanguard. needs testing)
