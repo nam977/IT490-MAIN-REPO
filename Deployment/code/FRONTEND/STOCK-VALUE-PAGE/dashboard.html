@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Value Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<section>
+    <h1>Stock Value Dashboard</h1>
+    <div class="field is-grouped">
+        <input id="symbolInput" 
+                class="input" 
+                type="text" 
+                placeholder="Enter Stock Symbol (e.g. AAPL)" 
+        />
+    </div>
+    <div class="control">
+        <div class="select">
+            <select id="stockInterval">
+                <option value="1min">1 Minute</option>
+                <option value="5min">5 Minutes</option>
+                <option value="15min">15 Minutes</option>
+                <option value="30min">30 Minutes</option>
+                <option value="60min">60 Minutes</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="control">
+        <button id="loadBtn" class="button is-link">
+            Load
+        </button>
+    </div>
+
+    <div id="stockPriceDisplay" class="notification is-info is-hidden">
+        Stock price will be displayed here.
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+        <canvas id="stockPriceChart" height="120"></canvas>
+    </div>
+
+
+    <div class="mt-5">
+        <button id="logoutBtn" 
+                class="button is-danger is-fullwidth">
+            Logout
+        </button>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const sessionId = sessionStorage.getItem('session_id');
+        const authToken = sessionStorage.getItem('auth_token');
+        
+        if (!sessionId || !authToken) {
+            window.location.href = '/login.html';
+            return;
+        }
+        const symbolInput           = document.getElementById('symbolInput');
+        const loadBtn               = document.getElementById('loadBtn');
+        const stockPriceDisplay     = document.getElementById('stockPriceDisplay');
+        const stockPriceChartCtx    = document.getElementById('stockPriceChart');
+        const stockIntervalSelect   = document.getElementById('stockInterval');
+        const logoutBtn             = document.getElementById('logoutBtn')
+        
+        let stockChartInstance = null;
+
+
+        function showMessage(message, type="info") {
+            stockPriceDisplay.className = 'notification is-' + type;
+            stockPriceDisplay.textContent = message;
+            stockPriceDisplay.classList.remove('is-hidden');   
+        }
+        
+        function hideMessage(){
+            stockPriceDisplay.classList.add('is-hidden');
+        }
+
+        function formatPrice(value) {
+            if (typeof value !== "number" || isNaN(value)) {
+                return "N/A";
+            }
+            return "$" + value.toFixed(2);
+        }
+
+        async function fetchStockData(symbol, interval){
+            const response = await fetch("/mqGateway.php", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                credentials: "same-origin",
+                body: JSON.stringify({
+                    type: "get_stock_value",
+                    session_id: sessionId,
+                    auth_token: authToken,
+                    symbol: symbol,
+                    interval: interval
+                })
+            });
+            return response.json();
+        }
+
+        function renderChart(history){
+            const labels = history.map(pt => pt.time);
+            const prices = history.map(pt => pt.price);
+
+            if(stockChartInstance){
+                stockChartInstance.destroy();
+            }
+
+            stockChartInstance = new Chart(stockPriceChartCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Closing Price",
+                        data: prices,
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Price (USD)'
+                            }
+                        }
+                    }
+                } 
+            });
+        }
+        
+        loadBtn.addEventListener("click", async () => {
+            const symbol = symbolInput.value.trim().toUpperCase() || "AAPL";
+            const interval = stockIntervalSelect.value;
+
+            showMessage(`Loading data for ${symbol} (${interval})...`, 'info');
+            
+            try {
+                const data = await fetchStockData(symbol, interval);
+
+                if(data.status !== "success"){
+                    showMessage(
+                        data.error || data.message || "Failed to load stock data.",
+                        "danger"
+                    );
+                    if (stockChartInstance) stockChartInstance.destroy();
+                        return;
+
+                }
+
+                const price = data.price;
+                const history = Array.isArray(data.history) ? data.history : [];
+
+                showMessage(
+                    `Current Price of ${symbol}: ${formatPrice(price)}`, 
+                    'success'
+                );
+
+                if(!history.length){
+                    if(stockChartInstance) stockChartInstance.destroy();
+                    return;
+                }
+                renderChart(history);
+            } catch (e) {
+                console.error("Error fetching stock data:", e);
+                showMessage("Error connecting to server.", "danger");
+                if (stockChartInstance) stockChartInstance.destroy();
+            }
+        });
+
+        logoutBtn.addEventListener("click", () => {
+            document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.href = '/login.html';
+        });
+
+        symbolInput.value = "AAPL";
+        loadBtn.click();
+    });
+</script>
+</body>
