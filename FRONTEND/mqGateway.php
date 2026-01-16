@@ -252,79 +252,70 @@ if ($type === 'get_stock_value') {
     ], 200);
 }
 
-if($type === 'place_trade'){
+if($type === 'place_trade' && !empty($input['mock'])){
 	
 	$symbol = strtoupper((string)($input['symbol'] ?? ''));
+	$quantity = (int)($input['quantity'] ?? 0);
+	$action = strtolower((string)($input['action'] ?? ''));
 
 	if ($symbol === '' || !preg_match('/^[A-Z0-9][A-Z0-9.-]{0,14}$/', $symbol)) {
 		json_response(['status' => 'error', 'error' => 'Invalid Stock Symbol'], 400);
 	}
 
-	$quantity = (int)($input['quantity'] ?? 0);
-
 	if ($quantity <= 0) {
 		json_response(['status' => 'error', 'error' => 'Quantity must be a positive number of shares'], 400);
 	}
 
-	$action = strtolower((string)($input['action'] ?? ($input['stockAction'] ?? '')));
-
-	if ($action === 'stockbuy') $action = 'buy';
-
-	if ($action === 'stocksell') $action = 'sell';
-
 	if (!in_array($action, ['buy', 'sell'], true)) {
-		json_response(['status' => 'error', 'error' => 'Invalid action (use buy or sell)'], 400);
+                json_response(['status' => 'error', 'error' => 'Invalid action (use buy or sell)'], 400);
 	}
 
-	if (!empty($input['mock'])) {
-		$backendUrl = "http://127.0.0.1:5001/api/trade";
-		
-		$ctx = stream_context_create([
-			'http' =>  [
-				'method' 	=> 'POST',
-				'timeout' 	=> 10,
-				'header'	=> "Content-Type: application/json\r\n",
-				'content'	=> json_encode([
-					'symbol'	=> $symbol,
-					'quantity'	=> $quantity,
-					'action'	=> $action,
-				])
-			]
-		]);
+	$backendUrl = "http://127.0.0.1:5001/api/trade";
 
-		$rawBackend = @file_get_contents($backendUrl, false, $ctx);
 
-		if ($rawBackend === false) {
-			json_response(['status' => 'error', 'error' => 'Failed to contact mock trade service'], 502);
-		}
 
-		$decoded = json_decode($rawBackend, true);
+	$ctx = stream_context_create([
+		'http' =>  [
+			'method'  => 'POST',
+			'timeout' => 10,
+			'header'  => "Content-Type: application/json\r\n",
+			'content' => json_encode([
+				'symbol'	=> $symbol,
+				'quantity'	=> $quantity,
+				'action'	=> $action,
+			])
+		]
+	]);
+	
+	$rawBackend = @file_get_contents($backendUrl, false, $ctx);
 
-		if (!is_array($decoded)) {
-                        json_response(['status' => 'error', 'error' => 'Non-JSON response from mock trade service'], 502);
-		}
-
-		json_response($decoded, 200);
+	if ($rawBackend === false) {
+		json_response(['status' => 'error', 'error' => 'Failed to contact mock trade service'], 502);
 	}
+
+	$decoded = json_decode($rawBackend, true);
+
+	if (!is_array($decoded)) {
+		json_response(['status' => 'error', 'error' => 'Non-JSON response from mock trade service'], 502);
+	}
+	
+	json_response($decoded, 200);
 }
 
 if ($type === 'get_portfolio') {
-
 	$backendUrl = "http://127.0.0.1:5001/api/portfolio";
 
 	$ctx = stream_context_create([
 		'http' => [
-			'method' 	=> 'GET',
-			'timeout' 	=> 10,	
+			'method'  => 'GET',
+			'timeout' => 10,	
 		]
 	]);
 
 	$rawBackend = @file_get_contents($backendUrl, false, $ctx);
 
 	if ($rawBackend === false) {
-		json_response(['status' => 'error', 'error' => 'Failed to contact portfolio service'], 502);
-		error_log(`[gateway] Failed to contact portfolio service at ${backendUrl}`);
-		error_log("[gateway] Context: " . print_r($ctx, true));
+		json_response(['status' => 'error', 'error' => 'Failed to contact portfolio service'], 502))
 	}
 
 	$decoded = json_decode($rawBackend, true);
