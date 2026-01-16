@@ -255,7 +255,6 @@ if ($type === 'get_stock_value') {
 if($type === 'place_trade' && !empty($input['mock'])){
 	
 	$symbol = strtoupper((string)($input['symbol'] ?? ''));
-	$quantity = (int)($input['quantity'] ?? 0);
 	$action = strtolower((string)($input['action'] ?? ''));
 
 	if ($symbol === '' || !preg_match('/^[A-Z0-9][A-Z0-9.-]{0,14}$/', $symbol)) {
@@ -315,11 +314,10 @@ if ($type === 'get_portfolio') {
 	$rawBackend = @file_get_contents($backendUrl, false, $ctx);
 
 	if ($rawBackend === false) {
-		json_response(['status' => 'error', 'error' => 'Failed to contact portfolio service'], 502))
+		json_response(['status' => 'error', 'error' => 'Failed to contact portfolio service'], 502);
 	}
 
 	$decoded = json_decode($rawBackend, true);
-
 	if (!is_array($decoded)) {
 		json_response(['status' => 'error', 'error' => 'Non-JSON response from portfolio service'], 502);
 	}
