@@ -155,6 +155,7 @@
     </div>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Ensure your Login Page saves these to sessionStorage!
     const sessionId = sessionStorage.getItem('session_id');
     const authToken = sessionStorage.getItem('auth_token');
     
@@ -163,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Additional JavaScript to handle trading functionality would go here
     const flashContainer      = document.getElementById('flashContainer');
     const startingCashSpan    = document.getElementById('startingCash');
     const cashBalanceSpan     = document.getElementById('cashbalance');
@@ -191,59 +191,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return '$' + num.toFixed(2);
     }
 
-    function retrieveTrades(trades){
-        const tbody = document.getElementById('tradesTableBody');
-
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        if (!trades || trades.length === 0){
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 5;
-            td.textContent = 'No trades found.';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
-            return ;
-        }
-
-        trades.forEach(trade => {
-            const tr = document.createElement('tr');
-
-            const dateTd = document.createElement('td');
-            dateTd.textContent = trade.datetime;
-            tr.appendChild(dateTd);
-
-            const actionTd = document.createElement('td');
-            actionTd.textContent = trade.action;
-            tr.appendChild(actionTd);
-
-            const symbolTd = document.createElement('td');
-            symbolTd.textContent = trade.symbol;
-            tr.appendChild(symbolTd);
-
-            const sharesTd = document.createElement('td');
-            sharesTd.textContent = trade.shares;
-            tr.appendChild(sharesTd);
-
-            const priceTd = document.createElement('td');
-            priceTd.textContent = formatMoney(trade.price_per_share);
-            tr.appendChild(priceTd);
-
-            const totalTd = document.createElement('td');
-            totalTd.textContent = formatMoney(trade.total_price);
-            tr.appendChild(totalTd);
-
-            tbody.appendChild(tr);
-        });
-    }
-
+    // Make sure this filename matches your actual PHP file
     async function callGateway(requestData) {
         const resp = await fetch('/mqGateway.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            credentials: 'same-origin',
             body: JSON.stringify({
                 session_id: sessionId,
                 auth_token: authToken, 
@@ -259,16 +211,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadPortfolioData() {
         try {
-            const data = await callGateway({type: 'get_portfolio'});
-            console.log('get_portfolio:', data);   
-            if (data.status !== 'success') {
-                addFlashMessage(
-                    data.message || data.message || 'Failed to load portfolio data', 
-                    'is-danger'
-                );
-                return;
-            }
+	    const data = await callGateway({ type: 'get_portfolio' });
+	    console.log('get_portfolio:', data);
 
+	// Accept either a wrapped gateway response OR raw Flask portfolio JSON
+	const ok =
+        data.status === 'success' 
+        (data.cash_balance !== undefined && data.total_equity !== undefined) 
+        (Array.isArray(data.holdings) && Array.isArray(data.trades));
+
+	 if (!ok) {
+		addFlashMessage(
+		data.error  data.message  'Failed to load portfolio data',
+		'is-danger'
+		);
+		return;
+	    }
+	
             startingCashSpan.innerText  = formatMoney(data.starting_cash);
             cashBalanceSpan.innerText   = formatMoney(data.cash_balance);
             holdingsValueSpan.innerText = formatMoney(data.holdings_value);
@@ -289,9 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     holdingsTableBody.appendChild(row);
                 });
             } else {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="5" class="has-text-centered">No holdings found.</td>';
-                holdingsTableBody.appendChild(row);
+                holdingsTableBody.innerHTML = '<tr><td colspan="5" class="has-text-centered">No holdings found.</td></tr>';
             }
 
             // Populate trades table
@@ -300,37 +257,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (trades.length) {
                 trades.forEach(trade => {
                     const row = document.createElement('tr');
-                    
-                    const dateId = document.createElement('td');
-                    dateId.textContent = trade.timestamp;
-                    row.appendChild(dateId);
-
-                    const actionId = document.createElement('td');
-                    actionId.textContent = trade.action;
-                    row.appendChild(actionId);
-
-                    const symbolId = document.createElement('td');
-                    symbolId.textContent = trade.symbol;
-                    row.appendChild(symbolId);
-
-                    const sharesId = document.createElement('td');
-                    sharesId.textContent = trade.quantity;
-                    row.appendChild(sharesId);
-
-                    const priceId = document.createElement('td');
-                    priceId.textContent = formatMoney(trade.price);
-                    row.appendChild(priceId);
-
-                    const totalId = document.createElement('td');
-                    totalId.textContent = formatMoney((Number(trade.price) || 0) * (Number(trade.quantity) || 0));
-                    row.appendChild(totalId);
-                    
+                    row.innerHTML = `
+                        <td>${trade.timestamp || trade.datetime}</td>
+                        <td>${trade.action}</td>
+                        <td>${trade.symbol}</td>
+                        <td>${trade.quantity || trade.shares}</td>
+                        <td>${formatMoney(trade.price || trade.price_per_share)}</td>
+                        <td>${formatMoney((Number(trade.price) || 0) * (Number(trade.quantity) || 0))}</td>
+                    `;
                     tradesTableBody.appendChild(row);
                 });
             } else {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="6" class="has-text-centered">No recent trades found.</td>';
-                tradesTableBody.appendChild(row);
+                tradesTableBody.innerHTML = '<tr><td colspan="6" class="has-text-centered">No recent trades found.</td></tr>';
             }
 
         } catch (error) {
@@ -339,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    tradeForm.addEventListener('submit', async (event) => {
+	tradeForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearFlashMessages();
 
@@ -347,48 +285,54 @@ document.addEventListener('DOMContentLoaded', () => {
         const stockQuantity = Number(document.getElementById('shareQuantity').value);
         const stockAction = document.getElementById('tradeAction').value;
 
-        if (!symbol || stockQuantity <= 0 || !['buy', 'sell'].includes(stockAction)) {
+        if (!symbol || stockQuantity <= 0) {
             addFlashMessage('Please provide valid trade details.', 'is-danger');
             return;
         }
 
         try {
-            const gatewayData = await callGateway({
-                type: 'place_trade',
-                symbol: symbol,
-                quantity: stockQuantity,
-                action: stockAction,
-<<<<<<< HEAD
-		mock: true
-=======
-                mock: true
->>>>>>> 9780526c0cf3df4675b51a5c286a70218645a112
-            });
-            console.log('place_trade:', gatewayData);
+	    const normalizedAction =
+  	      (action  "").toLowerCase() === "sell"  (action || "").toLowerCase() === "stocksell"
+    	      ? "sell"
+   	      : "buy";
 
-            if (gatewayData.status === "success") {
-                addFlashMessage(gatewayData.message || "Trade executed successfully");
-                await loadPortfolioData();
-            } else {
-                addFlashMessage(
-                    gatewayData.error || gatewayData.message || 'Failed to execute trade.', 
-                    'is-danger'
-                );
-            }
-        } catch (error) {
-            console.error('Error placing trade:', error);
-            addFlashMessage(error.message, 'is-danger');
-        }
-    });
+	    await callGateway({
+	    type: "place_trade",
+	    symbol,
+	    quantity,
+	    action: normalizedAction, // must be "buy" or "sell"
+	    mock: true                // must be truthy for !empty() in PHP
+	    });
+	    console.log('place_trade:', gatewayData);
+
+	    // Accept either wrapped success OR raw Flask trade/portfolio JSON
+  	    const tradeOk =
+	    gatewayData.status === 'success' 
+  	    gatewayData.cash_balance !== undefined 
+  	    Array.isArray(gatewayData.holdings) 
+  	    Array.isArray(gatewayData.trades);
+
+  	    if (tradeOk) {
+		addFlashMessage(gatewayData.message || "Trade executed successfully", 'is-success');
+          	await loadPortfolioData();
+	      } else {
+		 addFlashMessage(
+		  gatewayData.error || gatewayData.message || 'Failed to execute trade.',
+           	 'is-danger'
+		);
+               }
+	  };
 
     logoutButton.addEventListener('click', () => {
-        document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-
+        // Clear everything
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = '/index.html';
+        window.location.href = '/login.html'; // Direct redirect
     });
+
     loadPortfolioData();
 });
 </script>
