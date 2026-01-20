@@ -8,7 +8,7 @@
  */
 
 $config['database']['type'] = 'mysqli';
-$config['database']['database'] = 'mybb_forum';
+$config['database']['database'] = 'testdb';
 $config['database']['table_prefix'] = 'mybb_';
 
 $config['database']['hostname'] = 'localhost';
@@ -149,4 +149,4 @@ $config['disallowed_remote_addresses'] = array(
  *  on your Admin CP, enter it below.
  */
 
-$config['secret_pin'] = '1234';
+$config['secret_pin'] = '';

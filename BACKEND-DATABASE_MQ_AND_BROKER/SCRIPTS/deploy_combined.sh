@@ -23,7 +23,7 @@ My_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_FOLDER="$My_SCRIPT_DIR/frontend/FRONTEND"
 BACKEND_FOLDER="$My_SCRIPT_DIR/database-mq/IT-490-DATABASE-MQ"
 FRONTEND_LOCATION="/var/www/frontend"
-BACKEND_LOCATION="/var/www/backend"
+BACKEND_LOCATION="/var/www/sample/DATABASE_MQ"
 DB_USER="testuser"
 DB_PASS="rv9991\$#"
 DB_NAME="testdb"
@@ -83,8 +83,8 @@ EOF
 
 # Import database schema if exists
 if [ -f "$BACKEND_FOLDER/testdb.sql" ]; then
-    echo "Importing database schema..."
-    mysql -u $DB_USER -p"$DB_PASS" $DB_NAME < "$BACKEND_FOLDER/testdb.sql" 2>/dev/null || echo "Schema import skipped (may already exist)"
+    echo -e "Importing database schema..."
+    mysql -u $DB_USER -p"$DB_PASS" $DB_NAME < "$BACKEND_FOLDER/testdb.sql" 2>/dev/null || echo -e "Schema import skipped (may already exist)"
 fi
 
 print_success "MySQL configured"
@@ -250,7 +250,7 @@ fi
 echo -e "\n[+]========================================[+]"
 echo -e "\n[+] Deployment Complete![+]                [+]"
 echo -e "\n[+]========================================[+]"
-echo ""
-echo "Frontend URL: http://localhost/"
-echo "RabbitMQ Management: http://localhost:15672/ (user: $RABBITMQ_USER, pass: $RABBITMQ_PASS)"
-echo ""
+echo -e ""
+echo -e "\nFrontend URL: http://localhost/"
+echo -e "\nRabbitMQ Management: http://localhost:15672/ (user: $RABBITMQ_USER, pass: $RABBITMQ_PASS)"
+echo -e ""
