@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Trading Webpage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body>
+    <h1 class="title is-3 has-text-centered mt-5">Stock Trading Page</h1>
+    <div id="flashContainer" class="mb-4"></div>
+    <div class="columns metrics-box">
+
+        <div class="column">
+            <div class="metric-card has-text-centered">
+                <strong> Starting Cash</strong>
+                <span id="startingCash">$0.00</span>
+            </div> 
+        </div>
+        <div class="column">
+            <div class="metric-card has-text-centered">
+                <strong> Cash Balance</strong>
+                <span id="cashbalance">$0.00</span>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="metric-card has-text-centered">
+                <strong> Holdings Value</strong>
+                <span id="holdingsValue">$0.00</span>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="metric-card has-text-centered">
+                <strong> Total Equity</strong>
+                <span id="totalEquity">$0.00</span>
+            </div>
+        </div>
+    </div>
+    <!-- Trade Form -->
+     <div class="box">
+        <h2 class="title is-4"> Submit Trade</h2>
+        <form id="tradeForm">
+            <div class="columns">
+                <div class="column is-4">
+                    <div class="field">
+                        <label class="label" for="tickerSymbol"> Ticker Symbol</label>
+                        <div class="control">
+                            <input
+                                id="tickerSymbol"
+                                class="input"
+                                name="tickerSymbol"
+                                placeholder="e.g. AAPL"
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label" for="shareQuantity">Shares</label>
+                        <div class="control">
+                            <input
+                                id="shareQuantity"
+                                class="input"
+                                name="shareQuantity"
+                                type="number"
+                                min="1"
+                                value="1"
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label" for="tradeAction"> Action</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="tradeAction" name="tradeAction" required>
+                                    <option value="buy"> Buy</option>
+                                    <option value="sell"> Sell</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-2">
+                    <div class="field">
+                        <label class="label">&nbsp;</label>
+                        <div class="control">
+                            <button type="submit" class="button is-link is-fullwidth">
+                                Submit Trade
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+     </div>
+     <!-- Holdings Table-->
+     <div class="box">
+        <h2 class="title is-4"> Current Holdings</h2>
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Stock Symbol</th>
+                        <th>Shares</th>
+                        <th>Average Cost</th>
+                        <th>Last Price</th>
+                        <th>Market Value</th>
+                    </tr>
+                </thead>
+                <tbody id="holdingsTableBody">
+                    <tr>
+                        <td colspan="5" class="has-text-centered">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Trades Table -->
+    <div class="box">
+        <h2 class="title is-4">Recent Stock Purchases</h2>
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Action</th>
+                        <th>Symbol</th>
+                        <th>Number of Shares</th>
+                        <th> Price Per Share</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesTableBody">
+                    <tr>
+                        <td colspan="6" class="has-text-centered">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Logout -->
+    <div class="box">
+        <button id="logoutButton" class="button is-danger is-fullwidth">
+            Logout
+        </button>
+    </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure your Login Page saves these to sessionStorage!
+    const sessionId = sessionStorage.getItem('session_id');
+    const authToken = sessionStorage.getItem('auth_token');
+    
+    if (!sessionId || !authToken) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const flashContainer      = document.getElementById('flashContainer');
+    const startingCashSpan    = document.getElementById('startingCash');
+    const cashBalanceSpan     = document.getElementById('cashbalance');
+    const holdingsValueSpan   = document.getElementById('holdingsValue');
+    const totalEquitySpan     = document.getElementById('totalEquity');
+    const tradeForm           = document.getElementById('tradeForm');
+    const holdingsTableBody   = document.getElementById('holdingsTableBody');
+    const tradesTableBody     = document.getElementById('tradesTableBody');
+    const logoutButton        = document.getElementById('logoutButton');
+
+    function clearFlashMessages() {
+        flashContainer.innerHTML = '';
+    }
+
+    function addFlashMessage(message, type='is-info') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `notification ${type}`;
+        messageDiv.innerText = message;
+        flashContainer.appendChild(messageDiv);
+    }
+
+    function formatMoney(value){
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '$0.00';
+        return '$' + num.toFixed(2);
+    }
+
+    // Make sure this filename matches your actual PHP file
+    async function callGateway(requestData) {
+        const resp = await fetch('/mqGateway.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                session_id: sessionId,
+                auth_token: authToken, 
+                ...requestData,
+            })
+        });
+        if (!resp.ok) {
+            const text = await resp.text().catch(() => '');
+            throw new Error(`Gateway error ${resp.status}: ${text || resp.statusText}`);
+        }
+        return resp.json();
+    }
+
+    async function loadPortfolioData() {
+        try {
+	    const data = await callGateway({ type: 'get_portfolio' });
+	    console.log('get_portfolio:', data);
+
+	// Accept either a wrapped gateway response OR raw Flask portfolio JSON
+	const ok =
+        data.status === 'success' 
+        (data.cash_balance !== undefined && data.total_equity !== undefined) 
+        (Array.isArray(data.holdings) && Array.isArray(data.trades));
+
+	 if (!ok) {
+		addFlashMessage(
+		data.error  data.message  'Failed to load portfolio data',
+		'is-danger'
+		);
+		return;
+	    }
+	
+            startingCashSpan.innerText  = formatMoney(data.starting_cash);
+            cashBalanceSpan.innerText   = formatMoney(data.cash_balance);
+            holdingsValueSpan.innerText = formatMoney(data.holdings_value);
+            totalEquitySpan.innerText   = formatMoney(data.total_equity);
+
+            // Populate holdings table
+            holdingsTableBody.innerHTML = '';
+            if (data.holdings && data.holdings.length) {
+                data.holdings.forEach(holding => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${holding.symbol}</td>
+                        <td>${holding.shares}</td>
+                        <td>${formatMoney(holding.avg_cost)}</td>
+                        <td>${formatMoney(holding.last_price)}</td>
+                        <td>${formatMoney(holding.market_value)}</td>
+                    `;
+                    holdingsTableBody.appendChild(row);
+                });
+            } else {
+                holdingsTableBody.innerHTML = '<tr><td colspan="5" class="has-text-centered">No holdings found.</td></tr>';
+            }
+
+            // Populate trades table
+            tradesTableBody.innerHTML = '';
+            const trades = data.trades || [];
+            if (trades.length) {
+                trades.forEach(trade => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${trade.timestamp || trade.datetime}</td>
+                        <td>${trade.action}</td>
+                        <td>${trade.symbol}</td>
+                        <td>${trade.quantity || trade.shares}</td>
+                        <td>${formatMoney(trade.price || trade.price_per_share)}</td>
+                        <td>${formatMoney((Number(trade.price) || 0) * (Number(trade.quantity) || 0))}</td>
+                    `;
+                    tradesTableBody.appendChild(row);
+                });
+            } else {
+                tradesTableBody.innerHTML = '<tr><td colspan="6" class="has-text-centered">No recent trades found.</td></tr>';
+            }
+
+        } catch (error) {
+            console.error('Error loading portfolio data:', error);
+            addFlashMessage(error.message, 'is-danger');
+        }
+    }
+
+	tradeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearFlashMessages();
+
+        const symbol = document.getElementById('tickerSymbol').value.trim().toUpperCase();
+        const stockQuantity = Number(document.getElementById('shareQuantity').value);
+        const stockAction = document.getElementById('tradeAction').value;
+
+        if (!symbol || stockQuantity <= 0) {
+            addFlashMessage('Please provide valid trade details.', 'is-danger');
+            return;
+        }
+
+        try {
+	    const normalizedAction =
+  	      (action  "").toLowerCase() === "sell"  (action || "").toLowerCase() === "stocksell"
+    	      ? "sell"
+   	      : "buy";
+
+	    await callGateway({
+	    type: "place_trade",
+	    symbol,
+	    quantity,
+	    action: normalizedAction, // must be "buy" or "sell"
+	    mock: true                // must be truthy for !empty() in PHP
+	    });
+	    console.log('place_trade:', gatewayData);
+
+	    // Accept either wrapped success OR raw Flask trade/portfolio JSON
+  	    const tradeOk =
+	    gatewayData.status === 'success' 
+  	    gatewayData.cash_balance !== undefined 
+  	    Array.isArray(gatewayData.holdings) 
+  	    Array.isArray(gatewayData.trades);
+
+  	    if (tradeOk) {
+		addFlashMessage(gatewayData.message || "Trade executed successfully", 'is-success');
+          	await loadPortfolioData();
+	      } else {
+		 addFlashMessage(
+		  gatewayData.error || gatewayData.message || 'Failed to execute trade.',
+           	 'is-danger'
+		);
+               }
+	  };
+
+    logoutButton.addEventListener('click', () => {
+        // Clear everything
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/login.html'; // Direct redirect
+    });
+
+    loadPortfolioData();
+});
+</script>
+</body>
+</html>
