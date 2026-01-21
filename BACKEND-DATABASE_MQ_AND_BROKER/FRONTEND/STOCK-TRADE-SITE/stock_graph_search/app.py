@@ -7,6 +7,10 @@ from typing import Any, Dict, Tuple
 
 import requests
 from flask import Flask, jsonify, render_template, request
+from flask_login import current_user, login_required, LoginManager
+
+import mysql.connector
+from mysql.connector import Error
 
 app = Flask(__name__)
 
@@ -102,6 +106,15 @@ def getStockValues():
     if not ts_key or "Error Message" in stock_payload or "Note" in stock_payload:
         set_cached_payload(stockSymbol, stockTimeInterval, stock_payload)
         return error_response("Could not retrieve time series", detail=stock_payload, status=502)
+
+    #myDB = get_db()
+    #cursor = myDB.cursor()
+    #sql_statement = """INSERT INTO stock_prices (symbol, price) VALUES (%s, %s)"""
+    #values = (stockSymbol, 145,34)
+    #cursor.execute(sql_statement, values)
+    #myDB.commit()
+    #cursor.close()
+    #myDB.close()
 
     set_cached_payload(stockSymbol, stockTimeInterval, stock_payload)
     return jsonify(stock_payload)

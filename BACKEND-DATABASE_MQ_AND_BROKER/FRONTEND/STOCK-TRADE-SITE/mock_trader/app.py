@@ -6,6 +6,10 @@ from typing import Dict, List, Tuple
 
 import requests
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, LoginManager
+
+import mysql.connector
+from mysql.connector import Error
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("MOCK_TRADER_SECRET", "dev-secret")
@@ -192,7 +196,13 @@ def portfolio_api():
             "trades": _trade_history,
         }), 200
 
-
+def get_db():
+    return mysql.connector.connect(
+        host='localhost',       
+        user='testuser',
+        password='rv9991$#',  
+        database='testdb'   
+    )
         
 @app.route("/api/trade", methods=["POST"])
 def trade_api():
@@ -253,6 +263,27 @@ def trade_api():
     holdings = build_holdings_snapshot()
     holdings_value = sum(item["market_value"] for item in holdings)
     total_equity = _cash_balance + holdings_value
+ 
+    myDB = get_db()
+    cursor = myDB.cursor()
+
+    username = "steve"
+
+
+    sql_statement = """INSERT INTO trade_history (username, action, symbol, quantity, price) VALUES (%s, %s, %s, %s, %s)"""
+    values = (username, action, symbol, quantity, price)
+    cursor.execute(sql_statement, values)
+
+    sql_statement2 = """INSERT INTO stock_prices (symbol, price) VALUES (%s, %s)"""
+    values2 = (symbol, price)
+    
+    cursor.execute(sql_statement, values)
+    cursor.execute(sql_statement2, values2)
+
+
+    myDB.commit()
+    cursor.close()
+    myDB.close()
 
     return jsonify({
         'status': 'success',
